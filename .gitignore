@@ -1,0 +1,29 @@
+# ─── Node.js Dependencies ──────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# ─── Secrets and Local Credentials (CRITICAL) ─────────────────
+.env
+google-service-account.json
+
+# ─── Database and Cache Files ─────────────────────────────────
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.sqlite
+
+# ─── Archived HTML Reports ────────────────────────────────────
+reports/report_*.html
+reports/report_*.json
+
+# ─── OS and Editor Specifics ──────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
