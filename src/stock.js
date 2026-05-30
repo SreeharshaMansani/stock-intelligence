@@ -142,7 +142,7 @@ async function runT5(text_for_t5) {
     }, { timeout: 60000 });
 
     const event_id = postRes.data?.event_id;
-    if (!event_id) return 'T5 returned no summary';
+    if (!event_id) throw new Error('T5 Gradio API returned no event_id (Space might be sleeping or down)');
 
     // Wait (mirrors n8n Wait node)
     await sleep(waitSec * 1000);
@@ -156,18 +156,21 @@ async function runT5(text_for_t5) {
     // Parse SSE (Parse T5 SSE node)
     const raw = typeof getRes.data === 'string' ? getRes.data : JSON.stringify(getRes.data);
     const matches = [...raw.matchAll(/data:\s*(\[.*?\])/gs)];
-    if (!matches.length) return 'T5 returned no summary';
+    if (!matches.length) throw new Error('T5 Gradio API response contained no matching event data');
 
     const last = matches[matches.length - 1][1];
     try {
       const parsed = JSON.parse(last);
-      return (Array.isArray(parsed) ? (parsed[0] || '') : parsed).toString().trim() || 'T5 returned no summary';
+      const summary = (Array.isArray(parsed) ? (parsed[0] || '') : parsed).toString().trim();
+      if (!summary) throw new Error('Parsed T5 summary was empty');
+      return summary;
     } catch {
-      return last.trim() || 'T5 returned no summary';
+      if (!last.trim()) throw new Error('Parsed T5 summary was empty');
+      return last.trim();
     }
   } catch (err) {
-    console.warn('[T5] Error:', err.message);
-    return 'T5 summary unavailable';
+    console.error('[T5] Critical Error:', err.message);
+    throw new Error(`Hugging Face T5 summarizer is not working: ${err.message}`);
   }
 }
 

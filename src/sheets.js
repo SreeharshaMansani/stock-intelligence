@@ -7,7 +7,7 @@
 const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios');
+
 
 let _auth = null;
 
@@ -21,47 +21,7 @@ async function getAuth() {
   return _auth;
 }
 
-/** Simple CSV parser to parse public Google Sheets export data */
-function parseCsv(csvText) {
-  const lines = csvText.split(/\r?\n/);
-  if (lines.length < 2) return [];
-  
-  const parseLine = (line) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  };
 
-  const headers = parseLine(lines[0]).map(h => h.replace(/^"|"$/g, '').trim());
-  return lines.slice(1).filter(l => l.trim()).map(line => {
-    const values = parseLine(line).map(v => v.replace(/^"|"$/g, '').trim());
-    const obj = {};
-    headers.forEach((h, i) => {
-      obj[h] = values[i] || '';
-    });
-    return obj;
-  });
-}
-
-/** Fetch Google Sheets publicly without any API keys */
-async function readSheetPublicly(spreadsheetId, sheetName) {
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-  const res = await axios.get(url, { timeout: 30000 });
-  return parseCsv(res.data);
-}
 
 /**
  * Read a sheet tab and return array of objects keyed by header row.
@@ -94,39 +54,6 @@ async function readSheet(sheetName) {
  * Mirrors "Build Stock Universe" n8n Code node.
  */
 async function buildStockUniverse() {
-  const fallbackUniverse = [
-    {
-      stock:            'RELIANCE.NS',
-      simple:           'Reliance',
-      query:            'Reliance Industries',
-      aliases:          ['Reliance', 'RIL', 'Mukesh Ambani'],
-      sector_summary:   'Conglomerate: oil, retail, telecom',
-      exposures:        ['crude oil', 'Jio'],
-      exposure_source:  'fallback',
-      _system_status_sheet: 'ok',
-    },
-    {
-      stock:            'TCS.NS',
-      simple:           'TCS',
-      query:            'Tata Consultancy Services',
-      aliases:          ['TCS', 'Tata Consultancy'],
-      sector_summary:   'IT services, software exports',
-      exposures:        ['US dollar', 'NASSCOM'],
-      exposure_source:  'fallback',
-      _system_status_sheet: 'ok',
-    },
-    {
-      stock:            'HDFCBANK.NS',
-      simple:           'HDFC Bank',
-      query:            'HDFC Bank',
-      aliases:          ['HDFC Bank', 'HDFC'],
-      sector_summary:   'Banking, financial services',
-      exposures:        ['interest rate', 'RBI'],
-      exposure_source:  'fallback',
-      _system_status_sheet: 'ok',
-    }
-  ];
-
   let stocksRows, exposuresRows;
   const spreadsheetId = process.env.SPREADSHEET_ID || '1DnVNDKMh2odj4rjLaTD8N0rYf_BiPyvvuA9DtCFHpfI';
 
@@ -139,24 +66,12 @@ async function buildStockUniverse() {
     stocksRows    = await readSheet(process.env.STOCKS_SHEET_NAME    || 'Stocks');
     exposuresRows = await readSheet(process.env.EXPOSURES_SHEET_NAME || 'exposure');
   } catch (err) {
-    console.log('[Sheets] Sheets read via Service Account failed:', err.message);
-    
-    // 2. Fall back to reading publicly via direct CSV export URL!
-    console.log('[Sheets] Attempting to read Google Sheet publicly via CSV export URL...');
-    try {
-      stocksRows    = await readSheetPublicly(spreadsheetId, process.env.STOCKS_SHEET_NAME    || 'Stocks');
-      exposuresRows = await readSheetPublicly(spreadsheetId, process.env.EXPOSURES_SHEET_NAME || 'exposure');
-      console.log('  ✓ Public sheet read successful!');
-    } catch (publicErr) {
-      console.warn('[Sheets] Public sheet read failed:', publicErr.message);
-      console.log('[Sheets] Using built-in high-quality Stock Universe fallback for demo/test run.');
-      return fallbackUniverse;
-    }
+    console.error('[Sheets] Google Sheets API read failed:', err.message);
+    throw new Error(`Google Sheets API read failed: ${err.message}`);
   }
 
   if (!stocksRows.length || !stocksRows[0].ticker) {
-    console.log('[Sheets] Sheets were empty. Using built-in Stock Universe fallback.');
-    return fallbackUniverse;
+    throw new Error('Google Sheets read returned empty or invalid stock rows');
   }
 
   // Build exposures map: ticker → [exposure_terms]

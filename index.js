@@ -149,9 +149,7 @@ async function run() {
     // ── 5. Per-stock loop ──────────────────────────────────────
     currentPhase = 'Processing Stocks';
     console.log('\n[Phase 4] Processing stocks…');
-    const sheetFailed = stockUniverse[0]?._system_status_sheet === 'failed';
-
-    if (!sheetFailed && stockUniverse[0]?.stock !== 'NO_STOCKS') {
+    if (stockUniverse.length > 0) {
       for (let i = 0; i < stockUniverse.length; i++) {
         const stockConfig = stockUniverse[i];
         try {
@@ -174,6 +172,7 @@ async function run() {
           console.log(`  ✓ ${row.stock} — ${row.article_count} articles, price ₹${row.current_price} (${row.price_status})`);
         } catch (err) {
           console.error(`  ✗ ${stockConfig.stock} failed:`, err.message);
+          throw new Error(`Stock processing failed for ${stockConfig.stock}: ${err.message}`);
         }
 
         // Polite delay between stocks (avoid rate-limiting)
@@ -225,10 +224,24 @@ async function run() {
       const reportsDir = path.resolve('./reports');
       fs.mkdirSync(reportsDir, { recursive: true });
       const runDateStr = new Date().toISOString().split('T')[0];
+      
+      // Save HTML report
       reportFilename = `report_${runDateStr}.html`;
       const reportPath = path.join(reportsDir, reportFilename);
       fs.writeFileSync(reportPath, html, 'utf8');
       console.log(`  ✓ Saved local report to: ./reports/${reportFilename}`);
+
+      // Save JSON report
+      const jsonFilename = `report_${runDateStr}.json`;
+      const jsonPath = path.join(reportsDir, jsonFilename);
+      const reportJsonData = {
+        date: runDateStr,
+        tickers: stockUniverse.map(s => s.stock),
+        degraded: _degraded || false,
+        report: reportText
+      };
+      fs.writeFileSync(jsonPath, JSON.stringify(reportJsonData, null, 2), 'utf8');
+      console.log(`  ✓ Saved local JSON report to: ./reports/${jsonFilename}`);
     } catch (err) {
       console.error('  ✗ Failed to save local report:', err.message);
     }
