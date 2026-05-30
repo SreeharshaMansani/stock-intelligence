@@ -1,77 +1,64 @@
 'use strict';
 /**
- * email.js — Nodemailer Gmail sender.
- * Replaces the "Send Email" (n8n-nodes-base.gmail) node.
- *
- * Setup: enable 2FA on your Gmail account, then generate an App Password at
- * https://myaccount.google.com/apppasswords and put it in GMAIL_APP_PASSWORD.
+ * email.js — Google APIs Gmail REST client over HTTPS.
+ * Replaces the Nodemailer SMTP sender.
+ * Uses standard Port 443 web calls to prevent SMTP port blocks on Render.
  */
 
-const nodemailer = require('nodemailer');
-
-let _transporter = null;
-
-function getTransporter() {
-  if (_transporter) return _transporter;
-
-  const hasOAuth2 = process.env.GOOGLE_CLIENT_ID && 
-                    process.env.GOOGLE_CLIENT_SECRET && 
-                    process.env.GOOGLE_REFRESH_TOKEN;
-
-  if (hasOAuth2) {
-    console.log('[Email] Initializing Nodemailer with Google Cloud OAuth2...');
-    _transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        type: 'OAuth2',
-        user: process.env.GMAIL_USER,
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-      },
-      connectionTimeout: 60000,
-      greetingTimeout: 30000,
-      socketTimeout: 300000
-    });
-  } else {
-    console.log('[Email] Initializing Nodemailer with standard credentials (App Password)...');
-    _transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
-      connectionTimeout: 60000,
-      greetingTimeout: 30000,
-      socketTimeout: 300000
-    });
-  }
-
-  return _transporter;
-}
+const { google } = require('googleapis');
 
 /**
- * Send the HTML report email.
+ * Send the HTML report email using Gmail REST API.
  * @param {string} html   - Full HTML body
  * @param {string} date   - Human-readable date string for subject
  */
 async function sendReport(html, date) {
-  const transporter = getTransporter();
+  // 1. Initialize Google OAuth2 client
+  const oAuth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
 
-  const subject = `📊 Stock Intelligence — ${date}`;
-
-  await transporter.sendMail({
-    from:    `"Stock Intelligence Bot" <${process.env.GMAIL_USER}>`,
-    to:      process.env.REPORT_TO,
-    subject,
-    html,
+  oAuth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
   });
 
-  console.log(`[Email] Report sent to ${process.env.REPORT_TO}`);
+  const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
+
+  // 2. Build RFC 2822 compliant email message
+  const subject = `📊 Stock Intelligence — ${date}`;
+  const sender = `"Stock Intelligence Bot" <${process.env.GMAIL_USER}>`;
+  const to = process.env.REPORT_TO;
+
+  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+  const messageParts = [
+    `From: ${sender}`,
+    `To: ${to}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `MIME-Version: 1.0`,
+    `Subject: ${utf8Subject}`,
+    '',
+    html
+  ];
+  const message = messageParts.join('\n');
+
+  // Gmail API requires base64url encoded raw email message
+  const encodedMessage = Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  // 3. Dispatch call to Gmail REST API over secure HTTPS (Port 443)
+  console.log('[Email] Sending email via secure Gmail HTTP REST API...');
+  await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: {
+      raw: encodedMessage,
+    },
+  });
+
+  console.log(`[Email] Report sent via Gmail REST API to ${to}`);
 }
 
 module.exports = { sendReport };
