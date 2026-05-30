@@ -22,8 +22,8 @@ function getTransporter() {
     console.log('[Email] Initializing Nodemailer with Google Cloud OAuth2...');
     _transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         type: 'OAuth2',
         user: process.env.GMAIL_USER,
@@ -39,8 +39,8 @@ function getTransporter() {
     console.log('[Email] Initializing Nodemailer with standard credentials (App Password)...');
     _transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD,
