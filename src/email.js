@@ -1,64 +1,42 @@
 'use strict';
 /**
- * email.js — Google APIs Gmail REST client over HTTPS.
- * Replaces the Nodemailer SMTP sender.
- * Uses standard Port 443 web calls to prevent SMTP port blocks on Render.
+ * email.js — Resend HTTP REST client over HTTPS.
+ * Replaces SMTP and Gmail REST senders.
+ * Uses standard Port 443 web calls to prevent all cloud port blocks on Render.
  */
 
-const { google } = require('googleapis');
+const axios = require('axios');
 
 /**
- * Send the HTML report email using Gmail REST API.
+ * Send the HTML report email using Resend API.
  * @param {string} html   - Full HTML body
  * @param {string} date   - Human-readable date string for subject
  */
 async function sendReport(html, date) {
-  // 1. Initialize Google OAuth2 client
-  const oAuth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET
-  );
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || apiKey.startsWith('re_your_api_key')) {
+    throw new Error('Resend API key is missing or not configured in your environment variables');
+  }
 
-  oAuth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-  });
-
-  const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
-
-  // 2. Build RFC 2822 compliant email message
-  const subject = `📊 Stock Intelligence — ${date}`;
-  const sender = `"Stock Intelligence Bot" <${process.env.GMAIL_USER}>`;
   const to = process.env.REPORT_TO;
+  const subject = `📊 Stock Intelligence — ${date}`;
 
-  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
-  const messageParts = [
-    `From: ${sender}`,
-    `To: ${to}`,
-    `Content-Type: text/html; charset=utf-8`,
-    `MIME-Version: 1.0`,
-    `Subject: ${utf8Subject}`,
-    '',
-    html
-  ];
-  const message = messageParts.join('\n');
+  console.log('[Email] Sending email via Resend HTTP REST API...');
 
-  // Gmail API requires base64url encoded raw email message
-  const encodedMessage = Buffer.from(message)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-  // 3. Dispatch call to Gmail REST API over secure HTTPS (Port 443)
-  console.log('[Email] Sending email via secure Gmail HTTP REST API...');
-  await gmail.users.messages.send({
-    userId: 'me',
-    requestBody: {
-      raw: encodedMessage,
+  await axios.post('https://api.resend.com/emails', {
+    from: 'Stock Intelligence Bot <onboarding@resend.dev>',
+    to: [to],
+    subject: subject,
+    html: html
+  }, {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
     },
+    timeout: 40000
   });
 
-  console.log(`[Email] Report sent via Gmail REST API to ${to}`);
+  console.log(`[Email] Report sent via Resend API to ${to}`);
 }
 
 module.exports = { sendReport };
