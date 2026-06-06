@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Stock Intelligence — README</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Clash+Display:wght@400;500;600;700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #080c10;
+    --surface:   #0e1318;
+    --surface2:  #141b22;
+    --border:    rgba(255,255,255,0.07);
+    --accent:    #00e5a0;
+    --accent2:   #ff6d5a;
+    --accent3:   #5b8fff;
+    --text:      #e2eaf3;
+    --muted:     #5a6b7d;
+    --mono:      'DM Mono', monospace;
+    --display:   'Clash Display', sans-serif;
+    --body:      'Sora', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Noise texture overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 60px 24px;
+    overflow: hidden;
+  }
+
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPan 20s linear infinite;
+  }
+
+  @keyframes gridPan { from { transform: translateY(0); } to { transform: translateY(60px); } }
+
+  .hero-glow {
+    position: absolute;
+    width: 700px; height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,160,0.10) 0%, transparent 70%);
+    animation: pulse 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+
+  .badge-row {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    margin-bottom: 28px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .badge-green  { color: var(--accent);  border-color: rgba(0,229,160,0.3);  background: rgba(0,229,160,0.06); }
+  .badge-red    { color: var(--accent2); border-color: rgba(255,109,90,0.3); background: rgba(255,109,90,0.06); }
+  .badge-blue   { color: var(--accent3); border-color: rgba(91,143,255,0.3); background: rgba(91,143,255,0.06); }
+
+  .hero-title {
+    font-family: var(--display);
+    font-size: clamp(42px, 8vw, 86px);
+    font-weight: 700;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .hero-title .accent { color: var(--accent); }
+  .hero-title .dim    { color: var(--muted); }
+
+  .hero-sub {
+    font-size: 16px; color: var(--muted);
+    max-width: 560px; margin: 20px auto 40px;
+    font-weight: 300; letter-spacing: 0.01em;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  .hero-stats {
+    display: flex; gap: 40px; justify-content: center; flex-wrap: wrap;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.7s 0.35s ease both;
+  }
+
+  .stat { text-align: center; }
+  .stat-num {
+    font-family: var(--display);
+    font-size: 36px; font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--mono); }
+
+  .scroll-hint {
+    position: absolute; bottom: 32px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    font-family: var(--mono);
+    animation: fadeUp 0.7s 0.5s ease both;
+  }
+  .scroll-line {
+    width: 1px; height: 40px;
+    background: linear-gradient(to bottom, var(--muted), transparent);
+    animation: scrollLine 2s ease-in-out infinite;
+  }
+  @keyframes scrollLine { 0%, 100% { opacity: 0.3; transform: scaleY(1); } 50% { opacity: 1; transform: scaleY(0.6); } }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Shared Section Layout ── */
+  .section {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 80px 24px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.15em;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(to right, rgba(0,229,160,0.3), transparent);
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 600; line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+
+  .section-body { color: var(--muted); max-width: 600px; }
+
+  /* ── Pipeline Flowchart ── */
+  .pipeline-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 32px;
+    margin-top: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pipeline-wrap::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .pipeline-step {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 0 20px;
+    position: relative;
+  }
+
+  .step-spine {
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  .step-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--bg);
+    flex-shrink: 0;
+    margin-top: 18px;
+    position: relative;
+    z-index: 1;
+    transition: background 0.3s;
+  }
+
+  .pipeline-step:hover .step-dot { background: var(--accent); }
+
+  .step-line {
+    width: 2px;
+    flex: 1;
+    background: linear-gradient(to bottom, rgba(0,229,160,0.25), rgba(0,229,160,0.05));
+    min-height: 24px;
+  }
+
+  .pipeline-step:last-child .step-line { display: none; }
+
+  .step-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    transition: border-color 0.3s, transform 0.3s;
+    cursor: default;
+  }
+
+  .pipeline-step:hover .step-card {
+    border-color: rgba(0,229,160,0.25);
+    transform: translateX(4px);
+  }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 10px; color: var(--muted);
+    letter-spacing: 0.1em; margin-bottom: 4px;
+  }
+
+  .step-name {
+    font-family: var(--display);
+    font-size: 17px; font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .step-desc { font-size: 13px; color: var(--muted); }
+
+  .step-tags {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+  }
+
+  .step-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Architecture diagram ── */
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 24px;
+    margin-top: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arch-diagram::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent3), transparent);
+  }
+
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0;
+    align-items: center;
+  }
+
+  .arch-node {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 16px;
+    text-align: center;
+    transition: border-color 0.3s;
+  }
+
+  .arch-node:hover { border-color: rgba(91,143,255,0.4); }
+
+  .arch-node-icon {
+    font-size: 28px; margin-bottom: 8px; display: block;
+  }
+
+  .arch-node-name {
+    font-family: var(--display);
+    font-size: 13px; font-weight: 600; margin-bottom: 3px;
+  }
+
+  .arch-node-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  .arch-arrow {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; padding: 0 8px;
+  }
+
+  .arch-arrow-line {
+    width: 40px; height: 2px;
+    background: linear-gradient(90deg, var(--muted), rgba(91,143,255,0.6));
+    position: relative;
+  }
+
+  .arch-arrow-line::after {
+    content: '';
+    position: absolute; right: -5px; top: -4px;
+    border: 5px solid transparent;
+    border-left-color: rgba(91,143,255,0.6);
+    border-right: none;
+  }
+
+  .arch-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ── Setup cards ── */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 48px;
+  }
+
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .setup-card:hover {
+    border-color: rgba(0,229,160,0.2);
+    transform: translateY(-3px);
+  }
+
+  .setup-card::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+
+  .setup-card.c1::after { background: var(--accent); }
+  .setup-card.c2::after { background: var(--accent2); }
+  .setup-card.c3::after { background: var(--accent3); }
+  .setup-card.c4::after { background: #c084fc; }
+
+  .setup-num {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--muted);
+    letter-spacing: 0.1em; margin-bottom: 12px;
+  }
+
+  .setup-title {
+    font-family: var(--display);
+    font-size: 19px; font-weight: 600; margin-bottom: 10px;
+  }
+
+  .setup-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .setup-steps {
+    list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .setup-steps li {
+    font-size: 13px; color: var(--muted);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+
+  .setup-steps li::before {
+    content: '→';
+    color: var(--accent); flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* ── Env table ── */
+  .env-table {
+    width: 100%; border-collapse: collapse;
+    margin-top: 48px; font-size: 13px;
+  }
+
+  .env-table th {
+    font-family: var(--mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    text-align: left; font-weight: 400;
+  }
+
+  .env-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .env-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .env-key {
+    font-family: var(--mono);
+    color: var(--accent); font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .env-desc { color: var(--muted); }
+  .env-example { font-family: var(--mono); font-size: 11px; color: var(--muted); opacity: 0.6; }
+
+  /* ── Code blocks ── */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 24px;
+  }
+
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .code-dots { display: flex; gap: 6px; }
+  .code-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .code-dot:nth-child(1) { background: #ff5f57; }
+  .code-dot:nth-child(2) { background: #febc2e; }
+  .code-dot:nth-child(3) { background: #28c840; }
+
+  .code-filename {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .code-body {
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+
+  .code-body .cmt  { color: #4a5568; }
+  .code-body .cmd  { color: var(--accent); }
+  .code-body .flag { color: var(--accent3); }
+  .code-body .str  { color: #f6ad55; }
+
+  /* ── File tree ── */
+  .tree {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 2;
+    margin-top: 48px;
+  }
+
+  .tree-dir  { color: var(--accent3); }
+  .tree-file { color: var(--text); }
+  .tree-dim  { color: var(--muted); }
+  .tree-key  { color: var(--accent); }
+  .indent    { padding-left: 20px; }
+  .indent2   { padding-left: 40px; }
+
+  /* ── Cloud section ── */
+  .cloud-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-top: 48px;
+  }
+
+  .cloud-step {
+    background: var(--surface);
+    padding: 28px 20px;
+    transition: background 0.2s;
+  }
+
+  .cloud-step:hover { background: var(--surface2); }
+
+  .cloud-step-num {
+    font-family: var(--display);
+    font-size: 40px; font-weight: 700;
+    color: rgba(0,229,160,0.15);
+    line-height: 1; margin-bottom: 12px;
+  }
+
+  .cloud-step-name {
+    font-family: var(--display);
+    font-size: 15px; font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .cloud-step-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  .cloud-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--accent3);
+    font-family: var(--mono);
+    margin-top: 8px;
+    text-decoration: none;
+  }
+
+  /* ── Signal badges ── */
+  .signals {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-top: 48px;
+  }
+
+  .signal {
+    flex: 1; min-width: 120px;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .signal-name {
+    font-family: var(--mono);
+    font-size: 14px; font-weight: 500;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .signal-desc { font-size: 11px; opacity: 0.7; }
+
+  .sig-buy  { background: rgba(39,174,96,0.12);  border: 1px solid rgba(39,174,96,0.3);  }
+  .sig-buy  .signal-name { color: #2ecc71; }
+  .sig-hold { background: rgba(243,156,18,0.12); border: 1px solid rgba(243,156,18,0.3); }
+  .sig-hold .signal-name { color: #f39c12; }
+  .sig-wait { background: rgba(127,140,141,0.12);border: 1px solid rgba(127,140,141,0.3);}
+  .sig-wait .signal-name { color: #95a5a6; }
+  .sig-sell { background: rgba(231,76,60,0.12);  border: 1px solid rgba(231,76,60,0.3);  }
+  .sig-sell .signal-name { color: #e74c3c; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  footer strong { color: var(--accent); }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* ── Scroll reveal ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Warning / note box ── */
+  .note {
+    background: rgba(255,109,90,0.07);
+    border: 1px solid rgba(255,109,90,0.2);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 13px; color: var(--muted);
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+
+  .note-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .arch-grid { grid-template-columns: 1fr; gap: 12px; }
+    .arch-arrow { display: none; }
+    .signals { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HERO ═══════════════════════ -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="badge-row">
+    <span class="badge badge-green">Node.js</span>
+    <span class="badge badge-blue">Gemini AI</span>
+    <span class="badge badge-red">Yahoo Finance</span>
+    <span class="badge badge-green">Google Sheets</span>
+    <span class="badge badge-blue">Render · Free Tier</span>
+  </div>
+
+  <h1 class="hero-title">
+    Daily Stock<br>
+    <span class="accent">Intelligence</span><br>
+    <span class="dim">Report</span>
+  </h1>
+
+  <p class="hero-sub">
+    A fully automated pipeline that fetches news, prices, and macro context every weekday morning — then emails you a concise AI-generated research note.
+  </p>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <span class="stat-num">8</span>
+      <span class="stat-label">Pipeline Phases</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">4</span>
+      <span class="stat-label">Signal Types</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">0₹</span>
+      <span class="stat-label">Cloud Cost</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">7AM</span>
+      <span class="stat-label">Daily Delivery</span>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span>scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ HOW IT WORKS ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Pipeline</div>
+  <h2 class="section-title">How it works</h2>
+  <p class="section-body">Eight sequential phases run every weekday morning. Each phase feeds into the next — from raw RSS feeds and Yahoo Finance prices to a fully rendered HTML email in your inbox.</p>
+
+  <div class="pipeline-wrap">
+    <div class="pipeline">
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 01</div>
+          <div class="step-name">Build Stock Universe</div>
+          <div class="step-desc">Reads your watchlist and sector exposure mappings from two tabs of a Google Sheet via the Sheets API.</div>
+          <div class="step-tags"><span class="step-tag">Google Sheets API</span><span class="step-tag">Service Account</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 02</div>
+          <div class="step-name">Fetch Macro Context</div>
+          <div class="step-desc">Pulls Nifty 50, Sensex, S&P 500, Nasdaq, Brent Crude, Gold, USD/INR, and US 10Y yield from Yahoo Finance. Also fetches India-focused macro headlines from Google News RSS.</div>
+          <div class="step-tags"><span class="step-tag">Yahoo Finance</span><span class="step-tag">Google News RSS</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 03</div>
+          <div class="step-name">Build Exposure Map</div>
+          <div class="step-desc">Fetches news for every sector / thematic exposure term linked to your stocks — commodities, regulators, peers, currencies — in parallel batches.</div>
+          <div class="step-tags"><span class="step-tag">Google News RSS</span><span class="step-tag">Batch Fetching</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 04</div>
+          <div class="step-name">Per-Stock Processing</div>
+          <div class="step-desc">For each stock: fetch RSS news → filter by alias &amp; date → deduplicate → score sentiment → build summary bundle → run T5 summariser → fetch Yahoo price data. All in parallel.</div>
+          <div class="step-tags"><span class="step-tag">Google News</span><span class="step-tag">T5 Summariser</span><span class="step-tag">Yahoo Finance</span><span class="step-tag">SQLite</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 05</div>
+          <div class="step-name">Read Recent Rows</div>
+          <div class="step-desc">Queries SQLite for the last 1–3 days of stock data (3 days on Mondays to cover the weekend gap).</div>
+          <div class="step-tags"><span class="step-tag">SQLite</span><span class="step-tag">better-sqlite3</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 06</div>
+          <div class="step-name">Build Gemini Prompt</div>
+          <div class="step-desc">Assembles all stock data, macro context, and exposure news into a structured prompt with strict output format rules. Falls back to a degraded prompt if the sheet or data pipeline fails.</div>
+          <div class="step-tags"><span class="step-tag">Prompt Engineering</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 07</div>
+          <div class="step-name">Generate with Gemini</div>
+          <div class="step-desc">Calls Gemini via Google AI Studio (API key) or Vertex AI (service account). Falls back to a rule-based local generator if both are unavailable.</div>
+          <div class="step-tags"><span class="step-tag">Gemini 2.5 Flash</span><span class="step-tag">Vertex AI</span><span class="step-tag">Fallback Generator</span></div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine"><div class="step-dot"></div><div class="step-line"></div></div>
+        <div class="step-card">
+          <div class="step-num">PHASE 08</div>
+          <div class="step-name">Render HTML &amp; Send Email</div>
+          <div class="step-desc">Converts the Markdown report to a styled HTML email. Archives it locally. Sends via Resend HTTP API (port 443, no SMTP blocks).</div>
+          <div class="step-tags"><span class="step-tag">HTML Template</span><span class="step-tag">Resend API</span><span class="step-tag">Local Archive</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ ARCHITECTURE ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Architecture</div>
+  <h2 class="section-title">Zero-cost cloud setup</h2>
+  <p class="section-body">Four free services wire together to deliver your report every morning — no credit card needed for any of them.</p>
+
+  <div class="arch-diagram">
+    <div class="arch-grid">
+      <div class="arch-node">
+        <span class="arch-node-icon">⏰</span>
+        <div class="arch-node-name">cron-job.org</div>
+        <div class="arch-node-sub">7:00 AM IST<br>Mon – Fri</div>
+      </div>
+      <div class="arch-arrow">
+        <div class="arch-arrow-line"></div>
+        <div class="arch-label">HTTP GET</div>
+      </div>
+      <div class="arch-node">
+        <span class="arch-node-icon">🖥</span>
+        <div class="arch-node-name">Render.com</div>
+        <div class="arch-node-sub">Free Web Service<br>dashboard-server.js</div>
+      </div>
+      <div class="arch-arrow">
+        <div class="arch-arrow-line"></div>
+        <div class="arch-label">Spawns</div>
+      </div>
+      <div class="arch-node">
+        <span class="arch-node-icon">📊</span>
+        <div class="arch-node-name">Pipeline</div>
+        <div class="arch-node-sub">index.js --now<br>Full 8-phase run</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin-top:24px;">
+      <div class="arch-node">
+        <span class="arch-node-icon" style="font-size:22px">📋</span>
+        <div class="arch-node-name" style="font-size:12px">Google Sheets</div>
+        <div class="arch-node-sub">Watchlist Config</div>
+      </div>
+      <div class="arch-node">
+        <span class="arch-node-icon" style="font-size:22px">📰</span>
+        <div class="arch-node-name" style="font-size:12px">Google News RSS</div>
+        <div class="arch-node-sub">Stock + Macro News</div>
+      </div>
+      <div class="arch-node">
+        <span class="arch-node-icon" style="font-size:22px">🤖</span>
+        <div class="arch-node-name" style="font-size:12px">Gemini API</div>
+        <div class="arch-node-sub">AI Report Generation</div>
+      </div>
+      <div class="arch-node">
+        <span class="arch-node-icon" style="font-size:22px">✉️</span>
+        <div class="arch-node-name" style="font-size:12px">Resend</div>
+        <div class="arch-node-sub">Email Delivery</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ SIGNAL TYPES ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Output</div>
+  <h2 class="section-title">Four signal types</h2>
+  <p class="section-body">Every stock in your report gets one of these directional signals, determined by a rule-based rubric applied to sentiment score, price momentum, and distance from the 52-week high.</p>
+
+  <div class="signals">
+    <div class="signal sig-buy">
+      <div class="signal-name">BUY</div>
+      <div class="signal-desc">Positive sentiment AND price not significantly down AND &gt;5% below 52w high</div>
+    </div>
+    <div class="signal sig-hold">
+      <div class="signal-name">HOLD</div>
+      <div class="signal-desc">Neutral/positive sentiment AND price near 52w high — keep positions, no new entry</div>
+    </div>
+    <div class="signal sig-wait">
+      <div class="signal-name">WAIT</div>
+      <div class="signal-desc">Insufficient news, mixed signals, or price data unavailable</div>
+    </div>
+    <div class="signal sig-sell">
+      <div class="signal-name">SELL</div>
+      <div class="signal-desc">Negative sentiment AND price showing weakness</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ SETUP ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Prerequisites</div>
+  <h2 class="section-title">Get your credentials</h2>
+  <p class="section-body">You need four free accounts. None of them require a credit card.</p>
+
+  <div class="setup-grid">
+    <div class="setup-card c1">
+      <div class="setup-num">01 / GOOGLE SHEETS</div>
+      <div class="setup-title">Service Account</div>
+      <div class="setup-desc">Gives the pipeline read-only access to your watchlist sheet.</div>
+      <ul class="setup-steps">
+        <li>Create a GCP project, enable Sheets API</li>
+        <li>Create a service account → download JSON key</li>
+        <li>Rename to <code style="font-size:11px;color:var(--accent)">google-service-account.json</code></li>
+        <li>Share your sheet with the service account email as Viewer</li>
+      </ul>
+    </div>
+    <div class="setup-card c2">
+      <div class="setup-num">02 / GEMINI</div>
+      <div class="setup-title">AI Studio Key</div>
+      <div class="setup-desc">Free-tier API key for Gemini 2.5 Flash report generation.</div>
+      <ul class="setup-steps">
+        <li>Go to aistudio.google.com</li>
+        <li>Click <em>Create API Key</em></li>
+        <li>Copy the <code style="font-size:11px;color:var(--accent)">AIzaSy…</code> key</li>
+      </ul>
+    </div>
+    <div class="setup-card c3">
+      <div class="setup-num">03 / RESEND</div>
+      <div class="setup-title">Email API Key</div>
+      <div class="setup-desc">Sends your HTML report via HTTPS (no SMTP port blocks).</div>
+      <ul class="setup-steps">
+        <li>Sign up at resend.com</li>
+        <li>Create API key with Sending access</li>
+        <li>Free tier: 3,000 emails/month</li>
+      </ul>
+    </div>
+    <div class="setup-card c4">
+      <div class="setup-num">04 / GOOGLE SHEET</div>
+      <div class="setup-title">Watchlist Sheet</div>
+      <div class="setup-desc">Two tabs define everything the pipeline tracks.</div>
+      <ul class="setup-steps">
+        <li><strong style="color:var(--text)">Stocks</strong> tab: ticker, query, aliases, sector_summary</li>
+        <li><strong style="color:var(--text)">exposure</strong> tab: ticker, exposure_term pairs</li>
+        <li>Copy the Spreadsheet ID from the URL</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ ENV VARS ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Configuration</div>
+  <h2 class="section-title">Environment variables</h2>
+  <p class="section-body">Create a <code style="color:var(--accent);font-family:var(--mono);font-size:13px">.env</code> file in the project root. The file is git-ignored — never commit it.</p>
+
+  <table class="env-table">
+    <thead>
+      <tr>
+        <th>Variable</th>
+        <th>Description</th>
+        <th>Example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="env-key">GEMINI_API_KEY</td><td class="env-desc">Google AI Studio API key</td><td class="env-example">AIzaSy…</td></tr>
+      <tr><td class="env-key">GEMINI_MODEL</td><td class="env-desc">Model to use</td><td class="env-example">gemini-2.5-flash</td></tr>
+      <tr><td class="env-key">RESEND_API_KEY</td><td class="env-desc">Resend HTTP API key</td><td class="env-example">re_…</td></tr>
+      <tr><td class="env-key">REPORT_TO</td><td class="env-desc">Recipient email address</td><td class="env-example">you@example.com</td></tr>
+      <tr><td class="env-key">SPREADSHEET_ID</td><td class="env-desc">Google Sheet ID from URL</td><td class="env-example">1DnVND…</td></tr>
+      <tr><td class="env-key">STOCKS_SHEET_NAME</td><td class="env-desc">Tab name for stocks</td><td class="env-example">Stocks</td></tr>
+      <tr><td class="env-key">EXPOSURES_SHEET_NAME</td><td class="env-desc">Tab name for exposure terms</td><td class="env-example">exposure</td></tr>
+      <tr><td class="env-key">T5_BASE_URL</td><td class="env-desc">Hugging Face Gradio endpoint</td><td class="env-example">https://…hf.space/…</td></tr>
+      <tr><td class="env-key">T5_WAIT_SECONDS</td><td class="env-desc">Wait time for Gradio response</td><td class="env-example">20</td></tr>
+      <tr><td class="env-key">DB_PATH</td><td class="env-desc">Path to SQLite database</td><td class="env-example">./data/stock_reports.db</td></tr>
+      <tr><td class="env-key">CRON_SCHEDULE</td><td class="env-desc">Cron expression for local scheduler</td><td class="env-example">30 1 * * 1-5</td></tr>
+      <tr><td class="env-key">TIMEZONE</td><td class="env-desc">Timezone for date rendering</td><td class="env-example">Asia/Kolkata</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ LOCAL RUN ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Local Development</div>
+  <h2 class="section-title">Run it locally</h2>
+
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <span class="code-filename">terminal</span>
+    </div>
+    <div class="code-body">
+      <span class="cmt"># Install dependencies</span><br>
+      <span class="cmd">npm install</span><br><br>
+      <span class="cmt"># Dry-run: full pipeline, no email sent</span><br>
+      <span class="cmd">node index.js</span> <span class="flag">--now --dry-run</span><br><br>
+      <span class="cmt"># Full run: pipeline + email dispatch</span><br>
+      <span class="cmd">node index.js</span> <span class="flag">--now</span><br><br>
+      <span class="cmt"># Start dashboard server + built-in scheduler</span><br>
+      <span class="cmd">npm run dashboard</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="note-icon">⚠️</span>
+    <span>The dry-run flag skips email dispatch and saves the HTML report to <code style="font-family:var(--mono);color:var(--accent2)">./reports/</code> instead. Open it in a browser to preview exactly what would have been sent.</span>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ CLOUD DEPLOY ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Deployment</div>
+  <h2 class="section-title">Deploy for free in 6 steps</h2>
+
+  <div class="cloud-steps">
+    <div class="cloud-step">
+      <div class="cloud-step-num">01</div>
+      <div class="cloud-step-name">Push to GitHub</div>
+      <div class="cloud-step-desc">Create a <strong>private</strong> repo. The <code>.gitignore</code> ensures secrets never leave your machine.</div>
+    </div>
+    <div class="cloud-step">
+      <div class="cloud-step-num">02</div>
+      <div class="cloud-step-name">Create Render Service</div>
+      <div class="cloud-step-desc">New → Web Service → connect your repo. Build: <code>npm install</code>. Start: <code>npm run dashboard</code>. Instance: Free.</div>
+      <a class="cloud-link" href="https://render.com" target="_blank">render.com →</a>
+    </div>
+    <div class="cloud-step">
+      <div class="cloud-step-num">03</div>
+      <div class="cloud-step-name">Add Env Vars</div>
+      <div class="cloud-step-desc">Add every key from the table above under Environment Variables in the Render dashboard.</div>
+    </div>
+    <div class="cloud-step">
+      <div class="cloud-step-num">04</div>
+      <div class="cloud-step-name">Upload Secret File</div>
+      <div class="cloud-step-desc">Under Secret Files, add <code>google-service-account.json</code> and paste your service account key JSON.</div>
+    </div>
+    <div class="cloud-step">
+      <div class="cloud-step-num">05</div>
+      <div class="cloud-step-name">Deploy</div>
+      <div class="cloud-step-desc">Click Create Web Service. Render builds and deploys automatically. Note your <code>.onrender.com</code> URL.</div>
+    </div>
+    <div class="cloud-step">
+      <div class="cloud-step-num">06</div>
+      <div class="cloud-step-name">Schedule with cron-job.org</div>
+      <div class="cloud-step-desc">Create a free job targeting <code>/api/cron-trigger</code> on your Render URL. Set to 7:00 AM IST, Mon–Fri.</div>
+      <a class="cloud-link" href="https://cron-job.org" target="_blank">cron-job.org →</a>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="note-icon">💾</span>
+    <span>Render's free tier has an ephemeral filesystem — the SQLite DB and report archives reset on redeploy. This doesn't affect daily delivery. For permanent history, point <code style="font-family:var(--mono);color:var(--accent2)">src/db.js</code> at a free Supabase PostgreSQL database instead.</span>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════ FILE STRUCTURE ═══════════════════════ -->
+<section class="section reveal">
+  <div class="section-label">Codebase</div>
+  <h2 class="section-title">File structure</h2>
+
+  <div class="tree">
+    <div><span class="tree-dir">stock-intelligence/</span></div>
+    <div class="indent"><span class="tree-key">index.js</span> <span class="tree-dim">— Pipeline orchestrator (phases 1–8)</span></div>
+    <div class="indent"><span class="tree-key">dashboard-server.js</span> <span class="tree-dim">— HTTP server + /api/cron-trigger route</span></div>
+    <div class="indent"><span class="tree-file">package.json</span></div>
+    <div class="indent"><span class="tree-file">.env</span> <span class="tree-dim">— Your secrets (git-ignored)</span></div>
+    <div class="indent"><span class="tree-file">google-service-account.json</span> <span class="tree-dim">— Sheets key (git-ignored)</span></div>
+    <div class="indent"><span class="tree-dir">src/</span></div>
+    <div class="indent2"><span class="tree-key">sheets.js</span>   <span class="tree-dim">— Reads Stocks + exposure tabs via Sheets API</span></div>
+    <div class="indent2"><span class="tree-key">macro.js</span>    <span class="tree-dim">— Yahoo Finance macro data + Google News RSS</span></div>
+    <div class="indent2"><span class="tree-key">exposure.js</span> <span class="tree-dim">— Theme/sector exposure news map</span></div>
+    <div class="indent2"><span class="tree-key">stock.js</span>    <span class="tree-dim">— Per-stock news, sentiment, T5, price data</span></div>
+    <div class="indent2"><span class="tree-key">gemini.js</span>   <span class="tree-dim">— Prompt builder, Gemini API, HTML renderer</span></div>
+    <div class="indent2"><span class="tree-key">email.js</span>    <span class="tree-dim">— Resend HTTP email client</span></div>
+    <div class="indent2"><span class="tree-key">db.js</span>       <span class="tree-dim">— SQLite wrapper, headline dedup, row cache</span></div>
+    <div class="indent"><span class="tree-dir">data/</span></div>
+    <div class="indent2"><span class="tree-file">stock_reports.db</span> <span class="tree-dim">— Auto-created SQLite cache</span></div>
+    <div class="indent"><span class="tree-dir">reports/</span></div>
+    <div class="indent2"><span class="tree-file">report_YYYY-MM-DD.html</span> <span class="tree-dim">— Archived HTML reports</span></div>
+    <div class="indent2"><span class="tree-file">report_YYYY-MM-DD.json</span> <span class="tree-dim">— Archived JSON reports</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+<footer>
+  <div style="margin-bottom:12px; font-size:20px">📊</div>
+  Built with <strong>Node.js · Gemini AI · Yahoo Finance · Google Sheets · Resend</strong><br>
+  <span style="font-size:11px; opacity:0.5; margin-top:8px; display:block">Not financial advice · For personal research use only</span>
+</footer>
+
+<script>
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => io.observe(el));
+
+  // Stagger pipeline steps
+  document.querySelectorAll('.pipeline-step').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-16px)';
+    el.style.transition = `opacity 0.5s ${i * 0.08}s ease, transform 0.5s ${i * 0.08}s ease`;
+  });
+
+  const pipelineObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        document.querySelectorAll('.pipeline-step').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateX(0)';
+        });
+        pipelineObs.disconnect();
+      }
+    });
+  }, { threshold: 0.1 });
+
+  const pipelineEl = document.querySelector('.pipeline-wrap');
+  if (pipelineEl) pipelineObs.observe(pipelineEl);
+
+  // Animated counter for hero stats
+  function animateCount(el, target, suffix = '') {
+    let start = 0;
+    const dur = 1200;
+    const startTime = performance.now();
+    function step(now) {
+      const progress = Math.min((now - startTime) / dur, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = Math.floor(eased * target);
+      el.textContent = val + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  const statsObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        animateCount(document.querySelectorAll('.stat-num')[0], 8, '');
+        animateCount(document.querySelectorAll('.stat-num')[1], 4, '');
+        statsObs.disconnect();
+      }
+    });
+  }, { threshold: 0.5 });
+
+  const statsEl = document.querySelector('.hero-stats');
+  if (statsEl) statsObs.observe(statsEl);
+</script>
+
+</body>
+</html>
