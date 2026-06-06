@@ -170,7 +170,7 @@ async function runT5(text_for_t5) {
     }
   } catch (err) {
     console.error('[T5] Critical Error:', err.message);
-    throw new Error(`Hugging Face T5 summarizer is not working: ${err.message}`);
+    return `Summary unavailable (T5 offline: ${err.message})`;
   }
 }
 
