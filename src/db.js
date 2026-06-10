@@ -119,4 +119,20 @@ function filterSeenHeadlines(stock, articles) {
   });
 }
 
-module.exports = { cleanupOldRows, insertRow, getRecentRows, filterSeenHeadlines };
+/** Get latest successful row for a stock */
+function getLatestStockRow(stock) {
+  const db = getDb();
+  try {
+    return db.prepare(`
+      SELECT * FROM stock_reports 
+      WHERE stock = ? AND price_status = 'ok' 
+      ORDER BY run_date DESC 
+      LIMIT 1
+    `).get(stock);
+  } catch (err) {
+    console.warn(`[DB] Failed to get latest stock row for ${stock}:`, err.message);
+    return null;
+  }
+}
+
+module.exports = { cleanupOldRows, insertRow, getRecentRows, filterSeenHeadlines, getLatestStockRow };

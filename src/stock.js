@@ -11,7 +11,7 @@
  */
 
 const axios = require('axios');
-const { filterSeenHeadlines } = require('./db');
+const { filterSeenHeadlines, getLatestStockRow } = require('./db');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const POS_WORDS = ['rise','gain','surge','profit','beat','rally','jump','climb','boost','strong','growth','upgrade','positive','record','soar','expand','outperform','bullish','momentum','win','wins','tops','approves','acquires','launches'];
@@ -184,6 +184,42 @@ async function fetchPriceData(ticker) {
   }
 }
 
+async function fetchPriceFromQuote(ticker) {
+  const FAILED = null;
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker.trim())}`;
+    const res = await axios.get(url, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      timeout: 20000,
+    });
+    const result = res.data?.quoteResponse?.result?.[0];
+    if (!result) return FAILED;
+
+    const price = result.regularMarketPrice || 0;
+    const prev = result.regularMarketPreviousClose || 0;
+    const high52 = result.fiftyTwoWeekHigh || 0;
+    const low52 = result.fiftyTwoWeekLow || 0;
+    const pct1d = result.regularMarketChangePercent || 0;
+    const computedPct1d = prev > 0 ? ((price / prev - 1) * 100) : pct1d;
+    const distHigh = high52 > 0 ? ((price / high52 - 1) * 100) : 0;
+
+    return {
+      current_price:          parseFloat(price.toFixed(2)),
+      prev_close:             parseFloat(prev.toFixed(2)),
+      pct_change_1d:          parseFloat(computedPct1d.toFixed(2)),
+      pct_change_5d:          0, // quote endpoint does not have 5-day history
+      fifty_two_week_high:    parseFloat(high52.toFixed(2)),
+      fifty_two_week_low:     parseFloat(low52.toFixed(2)),
+      distance_52w_high_pct:  parseFloat(distHigh.toFixed(2)),
+      currency:               result.currency || 'INR',
+      price_status:           'ok',
+    };
+  } catch (err) {
+    console.warn(`[Price Quote Fallback] Failed for ${ticker}:`, err.message);
+    return FAILED;
+  }
+}
+
 // ──────────────────────────────────────────────
 // Main: process one stock end-to-end
 // ──────────────────────────────────────────────
@@ -198,6 +234,23 @@ async function processStock(stockConfig) {
   // 2. Filter by alias + date
   articles = filterByAliasAndDate(articles, stockConfig);
 
+  // Fallback news query if strict filters returned 0 articles
+  if (articles.length === 0 && stockConfig.simple) {
+    console.log(`[Stock News] No direct news found for ${stock}. Trying broader fallback news query...`);
+    const fallbackConfig = {
+      ...stockConfig,
+      query: `"${stockConfig.simple}" stock news`
+    };
+    const fallbackXml = await fetchStockNews(fallbackConfig);
+    const fallbackArticles = parseStockNews(fallbackXml, fallbackConfig);
+    articles = filterByAliasAndDate(fallbackArticles, fallbackConfig);
+
+    // If still empty, keep up to 3 raw headlines from fallback search
+    if (articles.length === 0 && fallbackArticles.length > 0) {
+      articles = fallbackArticles.slice(0, 3);
+    }
+  }
+
   // 3. Dedup against previous executions (Remove Duplicates node)
   articles = filterSeenHeadlines(stock, articles);
 
@@ -210,8 +263,35 @@ async function processStock(stockConfig) {
   // 6. Build news bundle
   const bundle = buildNewsBundle(articles);
 
-  // 7. Fetch price data
-  const priceData = await fetchPriceData(stock);
+  // 7. Fetch price data with multi-layer fallbacks
+  let priceData = await fetchPriceData(stock);
+
+  if (priceData.price_status !== 'ok') {
+    console.log(`[Price] v8 chart endpoint failed for ${stock}. Trying v7 quote endpoint...`);
+    const quoteData = await fetchPriceFromQuote(stock);
+    if (quoteData) {
+      priceData = quoteData;
+    }
+  }
+
+  if (priceData.price_status !== 'ok') {
+    console.log(`[Price] API calls failed for ${stock}. Checking database for cached fallback price...`);
+    const cachedRow = getLatestStockRow(stock);
+    if (cachedRow) {
+      console.log(`[Price] Found cached price for ${stock} from ${cachedRow.run_date} (Price: ₹${cachedRow.current_price})`);
+      priceData = {
+        current_price:          cachedRow.current_price,
+        prev_close:             cachedRow.prev_close,
+        pct_change_1d:          cachedRow.pct_change_1d,
+        pct_change_5d:          cachedRow.pct_change_5d,
+        fifty_two_week_high:    cachedRow.fifty_two_week_high,
+        fifty_two_week_low:     cachedRow.fifty_two_week_low,
+        distance_52w_high_pct:  cachedRow.distance_52w_high_pct,
+        currency:               cachedRow.sources?.includes('USD') ? 'USD' : 'INR',
+        price_status:           'cached',
+      };
+    }
+  }
 
   // 8. Build row (mirrors "Build Row" n8n Set node)
   const run_date = new Date().toISOString().split('T')[0];
