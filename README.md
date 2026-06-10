@@ -31,7 +31,7 @@ graph TD
 * **Flexible Gemini Engine (Dual-Mode):** 
   * *Google AI Studio (Recommended):* Authenticate using a free API key with a generous free tier (no credit card required).
   * *Vertex AI:* Fall back to Google Cloud service account authentication if billing is enabled.
-* **Resilient T5 Summarizer:** The system automatically catches timeouts or errors from the Hugging Face T5 space and generates fallback summaries to ensure the main pipeline never crashes.
+* **Direct News Context Feed:** The system fetches recent headlines and snippets directly and passes them to Gemini as baseline context, allowing the LLM to analyze the source material and reason on its own.
 * **Resend HTTP Mailer:** Bypasses SMTP port blocking on modern cloud hosts like Render by utilizing Resend's secure HTTPS API (port 443).
 * **Control Center UI:** Built-in web dashboard to review settings, trigger manual runs, inspect logs, and download past HTML and JSON reports.
 
@@ -96,8 +96,7 @@ Create a file named `.env` in the root of your project (use `.env.example` as a 
 | `SPREADSHEET_ID` | The ID of your tracking Google Sheet | `1DnVND...` |
 | `STOCKS_SHEET_NAME` | The tab name where stocks are configured | `Stocks` |
 | `EXPOSURES_SHEET_NAME`| The tab name where theme exposures are listed | `exposure` |
-| `T5_BASE_URL` | Hugging Face Space endpoint for T5 | `https://...` |
-| `T5_WAIT_SECONDS` | Timeout to wait for Gradio responses | `20` |
+
 | `DB_PATH` | The path to the SQLite cache database | `./data/stock_reports.db` |
 | `CRON_SCHEDULE` | Standard cron configuration (Local mode) | `30 1 * * 1-5` |
 | `TIMEZONE` | Timezone context for date rendering | `Asia/Kolkata` |
@@ -179,7 +178,7 @@ stock-intelligence/
 │   ├── sheets.js                # Google Sheets reader & CSV export fallback
 │   ├── macro.js                 # Macro market trackers & general news fetchers
 │   ├── exposure.js              # Sector/peer exposure context mapper
-│   ├── stock.js                 # Yahoo price parser, sentiment analysis, T5 summaries
+│   ├── stock.js                 # Yahoo price parser, sentiment analysis, direct news compiler
 │   ├── gemini.js                # Prompt assembler, Gemini API caller & HTML templater
 │   └── email.js                 # Resend HTTP REST email API client
 ├── data/

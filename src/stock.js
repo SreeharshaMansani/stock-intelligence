@@ -6,7 +6,6 @@
  *   Normalize GNews Items, Normalize News Item, Filter — Alias + Date,
  *   Remove Duplicates, Limit (Max 10), Score Sentiment,
  *   Aggregate Articles, Build News Bundle,
- *   T5 — POST Predict, Wait For T5, T5 — GET Result, Parse T5 SSE,
  *   Yahoo Finance, Extract Price Data,
  *   Merge — News + Price, Build Row
  */
@@ -121,58 +120,14 @@ function buildNewsBundle(articles) {
   const avg_sentiment = sentiments.length === 0 ? 0 :
     parseFloat((sentiments.reduce((a, b) => a + b, 0) / sentiments.length).toFixed(2));
   const sources_csv   = [...new Set(sources)].slice(0, 5).join(', ') || 'none';
-  const text_for_t5   = article_count === 0
+  const news_text   = article_count === 0
     ? 'No news available in last 36 hours'
     : titles.map((t, i) => `Title: ${t}\nSummary: ${snippets[i] || ''}`).join('\n\n').slice(0, 4000);
 
-  return { article_count, top_headline, avg_sentiment, sources_csv, text_for_t5, titles, snippets, sources: sources_csv, links };
+  return { article_count, top_headline, avg_sentiment, sources_csv, news_text, titles, snippets, sources: sources_csv, links };
 }
 
-// ──────────────────────────────────────────────
-// T5 Summariser (Hugging Face Gradio)
-// ──────────────────────────────────────────────
-async function runT5(text_for_t5) {
-  const baseUrl = process.env.T5_BASE_URL || 'https://harsha000007-t5-model.hf.space/gradio_api/call/predict';
-  const waitSec = parseInt(process.env.T5_WAIT_SECONDS || '6', 10);
 
-  try {
-    // POST to get event_id
-    const postRes = await axios.post(baseUrl, {
-      data: [text_for_t5 || 'No news found', 'summarize'],
-    }, { timeout: 60000 });
-
-    const event_id = postRes.data?.event_id;
-    if (!event_id) throw new Error('T5 Gradio API returned no event_id (Space might be sleeping or down)');
-
-    // Wait (mirrors n8n Wait node)
-    await sleep(waitSec * 1000);
-
-    // GET result
-    const getRes = await axios.get(`${baseUrl}/${event_id}`, {
-      responseType: 'text',
-      timeout: 60000,
-    });
-
-    // Parse SSE (Parse T5 SSE node)
-    const raw = typeof getRes.data === 'string' ? getRes.data : JSON.stringify(getRes.data);
-    const matches = [...raw.matchAll(/data:\s*(\[.*?\])/gs)];
-    if (!matches.length) throw new Error('T5 Gradio API response contained no matching event data');
-
-    const last = matches[matches.length - 1][1];
-    try {
-      const parsed = JSON.parse(last);
-      const summary = (Array.isArray(parsed) ? (parsed[0] || '') : parsed).toString().trim();
-      if (!summary) throw new Error('Parsed T5 summary was empty');
-      return summary;
-    } catch {
-      if (!last.trim()) throw new Error('Parsed T5 summary was empty');
-      return last.trim();
-    }
-  } catch (err) {
-    console.error('[T5] Critical Error:', err.message);
-    return `Summary unavailable (T5 offline: ${err.message})`;
-  }
-}
 
 // ──────────────────────────────────────────────
 // Yahoo Finance Price Data
@@ -186,7 +141,7 @@ async function fetchPriceData(ticker) {
   };
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=10d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker.trim())}?interval=1d&range=10d`;
     const res = await axios.get(url, {
       headers: { 'User-Agent': UA, Accept: 'application/json' },
       timeout: 30000,
@@ -255,11 +210,8 @@ async function processStock(stockConfig) {
   // 6. Build news bundle
   const bundle = buildNewsBundle(articles);
 
-  // 7. T5 summarise (runs in parallel with price fetch)
-  const [t5_summary, priceData] = await Promise.all([
-    runT5(bundle.text_for_t5),
-    fetchPriceData(stock),
-  ]);
+  // 7. Fetch price data
+  const priceData = await fetchPriceData(stock);
 
   // 8. Build row (mirrors "Build Row" n8n Set node)
   const run_date = new Date().toISOString().split('T')[0];
@@ -268,7 +220,7 @@ async function processStock(stockConfig) {
     stock,
     article_count:         bundle.article_count,
     top_headline:          bundle.top_headline,
-    t5_summary,
+    news_text:             bundle.news_text,
     avg_sentiment:         bundle.avg_sentiment,
     current_price:         priceData.current_price,
     pct_change_1d:         priceData.pct_change_1d,

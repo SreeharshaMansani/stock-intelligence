@@ -85,7 +85,6 @@ async function sendErrorEmail(error, phase) {
       <ul>
         <li><strong>Credential Check:</strong> Verify Google Sheets Service Account JSON exists and <code>.env</code> has valid credentials.</li>
         <li><strong>API Health:</strong> Ensure Gemini API is available and keys are active.</li>
-        <li><strong>T5 Summarizer Core:</strong> Check Hugging Face space status (could be waking up or sleeping).</li>
         <li><strong>Database Lock:</strong> Ensure SQLite file at <code>${process.env.DB_PATH || './data/stock_reports.db'}</code> is not locked by another process.</li>
       </ul>
     </div>
@@ -160,7 +159,7 @@ async function run() {
             stock:                 row.stock,
             article_count:         row.article_count,
             top_headline:          row.top_headline,
-            t5_summary:            row.t5_summary,
+            news_text:             row.news_text,
             avg_sentiment:         row.avg_sentiment,
             current_price:         row.current_price,
             pct_change_1d:         row.pct_change_1d,

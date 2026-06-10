@@ -21,6 +21,17 @@ function getDb() {
   _db = new Database(dbPath);
   _db.pragma('journal_mode = WAL');
 
+  try {
+    const tableInfo = _db.prepare("PRAGMA table_info(stock_reports)").all();
+    const hasT5 = tableInfo.some(col => col.name === 't5_summary');
+    if (hasT5) {
+      console.log('[DB] Found old t5_summary column. Recreating stock_reports table...');
+      _db.exec("DROP TABLE IF EXISTS stock_reports");
+    }
+  } catch (err) {
+    // Ignore error if table does not exist
+  }
+
   _db.exec(`
     CREATE TABLE IF NOT EXISTS stock_reports (
       id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,7 +39,7 @@ function getDb() {
       stock               TEXT NOT NULL,
       article_count       INTEGER DEFAULT 0,
       top_headline        TEXT,
-      t5_summary          TEXT,
+      news_text           TEXT,
       avg_sentiment       REAL DEFAULT 0,
       current_price       REAL DEFAULT 0,
       pct_change_1d       REAL DEFAULT 0,
@@ -74,11 +85,11 @@ function insertRow(row) {
   const db = getDb();
   db.prepare(`
     INSERT INTO stock_reports
-      (run_date, stock, article_count, top_headline, t5_summary,
+      (run_date, stock, article_count, top_headline, news_text,
        avg_sentiment, current_price, pct_change_1d, pct_change_5d,
        distance_52w_high_pct, sources, price_status)
     VALUES
-      (@run_date, @stock, @article_count, @top_headline, @t5_summary,
+      (@run_date, @stock, @article_count, @top_headline, @news_text,
        @avg_sentiment, @current_price, @pct_change_1d, @pct_change_5d,
        @distance_52w_high_pct, @sources, @price_status)
   `).run(row);

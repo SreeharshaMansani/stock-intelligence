@@ -8,6 +8,23 @@
 const axios = require('axios');
 const path = require('path');
 
+async function callWithRetry(fn, retries = 3, delayMs = 2000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = err.response?.status;
+      const isTransient = !status || status === 429 || status >= 500;
+      if (attempt === retries || !isTransient) {
+        throw err;
+      }
+      console.warn(`[Gemini] Attempt ${attempt} failed with transient error: ${err.message}. Retrying in ${delayMs}ms...`);
+      await new Promise(r => setTimeout(r, delayMs));
+      delayMs *= 2;
+    }
+  }
+}
+
 /** Build the Gemini prompt from all collected data (exact port of the n8n Code node) */
 function buildGeminiPrompt({ rows, macroMarketsText, macroNewsText, exposureMap, stocksConfig }) {
   const today = new Date().toISOString().split('T')[0];
@@ -99,7 +116,8 @@ LATEST_DATE: ${latest.run_date}
 ${priceLine}
 DIRECT NEWS (last run): ${latest.article_count} articles from ${latest.sources}
 TOP HEADLINE: ${latest.top_headline}
-NEWS SUMMARY (T5): ${latest.t5_summary}
+DIRECT NEWS ARTICLES:
+${latest.news_text}
 DIRECT SENTIMENT: ${sentimentLabel} (score ${latest.avg_sentiment})
 EXPOSURE CONTEXT (${myExposures.length} tracked entities, ${exposuresWithNews} with news):
 ${exposureText}`;
@@ -113,10 +131,10 @@ ${exposureText}`;
 
   const stocksText = stockBlocks.join('\n\n');
 
-  const prompt = `You are a financial research assistant compiling a personal research note for an Indian retail investor who has opted in to read raw source synthesis. You are NOT giving regulated financial advice — you are producing a directional signal based ONLY on the supplied data.
+  const prompt = `You are a financial research assistant compiling a personal research note for an Indian retail investor who has opted in to read raw source synthesis. You are NOT giving regulated financial advice — you are producing a directional signal using the retrieved daily facts as a baseline, enhanced by your own financial reasoning, company knowledge, and market analysis.
 
 === HARD RULES ===
-- Use the supplied data only. Never invent numbers or news.
+- Use the supplied data as your core foundation. You are encouraged to leverage your own financial expertise, company context, and general market knowledge to interpret trends, explain underlying drivers, and reason on your own. Do not fabricate fictional news events or specific numbers.
 - For each stock, produce a directional ACTION tag: **BUY**, **HOLD**, **WAIT**, or **SELL** using this rubric:
    • BUY  = sentiment Positive AND price not significantly down AND >5% below 52w high
    • HOLD = sentiment Neutral/Positive AND price near 52w high (extended) — keep, no new entry
@@ -199,9 +217,9 @@ function generateLocalFallbackReport(prompt) {
     const headlineMatch = blockText.match(/TOP HEADLINE: ([^\r\n]+)/);
     const headline = headlineMatch ? headlineMatch[1] : 'No major news';
     
-    // Parse News Summary
-    const summaryMatch = blockText.match(/NEWS SUMMARY \(T5\): ([\s\S]*?)(?=\r?\n[A-Z_]+:|\r?\n===|$)/);
-    const summary = summaryMatch ? summaryMatch[1].trim() : 'Summary unavailable';
+    // Parse Direct News Articles
+    const summaryMatch = blockText.match(/DIRECT NEWS ARTICLES: ([\s\S]*?)(?=\r?\n[A-Z_]+:|\r?\n===|$)/);
+    const summary = summaryMatch ? summaryMatch[1].trim() : 'No news articles available';
     
     // Parse Sentiment
     const sentimentMatch = blockText.match(/DIRECT SENTIMENT: (\w+)\s*\(score ([\d.-]+)\)/);
@@ -352,14 +370,20 @@ async function generateReport(prompt) {
     const model  = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    const res = await axios.post(url, {
-      contents: [{ parts: [{ text: prompt }] }],
-    }, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 120000,
-    });
+    try {
+      const res = await callWithRetry(() => axios.post(url, {
+        contents: [{ parts: [{ text: prompt }] }],
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 120000,
+      }));
 
-    return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No report generated';
+      return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No report generated';
+    } catch (err) {
+      console.warn('[Gemini] Google AI Studio Call failed after retries:', err.message);
+      console.log('[Gemini] Transitioning to Local Intelligent Generator fallback mode.');
+      return generateLocalFallbackReport(prompt);
+    }
   }
 
   // 2. Otherwise, fall back to Vertex AI using Service Account Auth!
@@ -382,7 +406,7 @@ async function generateReport(prompt) {
     const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${config.projectId}/locations/${region}/publishers/google/models/${modelName}:generateContent`;
     console.log(`[Gemini] Querying Vertex AI Endpoint: publishers/google/models/${modelName}...`);
 
-    const res = await axios.post(url, {
+    const res = await callWithRetry(() => axios.post(url, {
       contents: [{ parts: [{ text: prompt }] }],
     }, {
       headers: {
@@ -390,7 +414,7 @@ async function generateReport(prompt) {
         'Content-Type': 'application/json'
       },
       timeout: 120000,
-    });
+    }));
 
     const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No report generated';
     return text;
@@ -450,7 +474,7 @@ function renderHtml(reportText, reportDate) {
       ${reportHtml}
     </div>
     <div class="footer">
-      &copy; ${new Date().getFullYear()} Stock Intelligence Bot · Google News + Yahoo Finance + Macro Context + T5 + Gemini · Not financial advice
+      &copy; ${new Date().getFullYear()} Stock Intelligence Bot · Google News + Yahoo Finance + Macro Context + Gemini · Not financial advice
     </div>
   </div>
 </body>

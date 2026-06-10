@@ -77,7 +77,7 @@ async function buildStockUniverse() {
   // Build exposures map: ticker → [exposure_terms]
   const expMap = {};
   for (const er of exposuresRows) {
-    const t = er.ticker;
+    const t = er.ticker ? er.ticker.trim() : '';
     const e = er.exposure_term;
     if (!t || !e) continue;
     if (!expMap[t]) expMap[t] = [];
@@ -87,12 +87,13 @@ async function buildStockUniverse() {
   return stocksRows
     .filter(row => row.ticker)
     .map(row => {
+      const tickerTrimmed = row.ticker.trim();
       let aliasesParsed = [];
       try { aliasesParsed = JSON.parse(row.aliases || '[]'); } catch { aliasesParsed = []; }
 
-      const exposures = expMap[row.ticker] || [];
+      const exposures = expMap[tickerTrimmed] || [];
       return {
-        stock:            row.ticker,
+        stock:            tickerTrimmed,
         simple:           row.simple || '',
         query:            row.query  || '',
         aliases:          aliasesParsed,
