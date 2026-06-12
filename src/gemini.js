@@ -531,64 +531,23 @@ function renderHtml(reportText, reportDate) {
 
   // Fallback if no stocks were parsed (e.g. degraded run status report)
   if (parsed.stocks.length === 0) {
-    const fallbackHtml = reportText.replace(/\n/g, '<br>');
     return `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Intelligence - Notification</title>
-    <style>
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            color: #f8fafc;
-            padding: 24px 12px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 14px;
-            min-height: 100vh;
-            line-height: 1.45;
-        }
-        .container { max-width: 440px; margin: 0 auto; }
-        .glass-head {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 16px;
-            text-align: center;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-        }
-        .title { 
-            font-size: 1.25rem; 
-            font-weight: 800; 
-            letter-spacing: 0.05em; 
-            background: linear-gradient(90deg, #ff6d5a, #fbbf24); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-        .body-msg { font-size: 0.88rem; color: #cbd5e1; line-height: 1.5; }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <div class="glass-head">
-            <div class="title">SYSTEM ALERT</div>
-            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${reportDate}</div>
-        </div>
-        <div class="glass-card">
-            <div class="body-msg">${fallbackHtml}</div>
+<body style="margin: 0; padding: 0; background-color: #0f172a;">
+    <div style="background: #0f172a; background-image: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #f8fafc; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.45;">
+        <div class="container" style="max-width: 440px; margin: 0 auto;">
+            <div class="glass-head" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);">
+                <div class="title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.05em; color: #38bdf8;">SYSTEM ALERT</div>
+                <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${reportDate}</div>
+            </div>
+            <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
+                <div class="body-msg" style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.5;">${fallbackHtml}</div>
+            </div>
         </div>
     </div>
 </body>
@@ -598,10 +557,10 @@ function renderHtml(reportText, reportDate) {
   // Generate Market Pulse HTML
   let pulseHtml = '';
   for (const point of parsed.marketPulse) {
-    pulseHtml += `            <div class="bullet-point">🔹 ${point}</div>\n`;
+    pulseHtml += `            <div class="bullet-point" style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 8px; line-height: 1.4;">🔹 ${point}</div>\n`;
   }
   if (!pulseHtml) {
-    pulseHtml = `            <div class="bullet-point">🔹 Market data loading completed successfully.</div>\n`;
+    pulseHtml = `            <div class="bullet-point" style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 8px; line-height: 1.4;">🔹 Market data loading completed successfully.</div>\n`;
   }
 
   // Generate Stocks HTML
@@ -614,33 +573,42 @@ function renderHtml(reportText, reportDate) {
     const pillClass = getPillClass(d1Change);
     const subText = d5Change ? `5D: ${d5Change} &bull; Signal: ${stock.action}` : `Signal: ${stock.action}`;
 
+    let pillStyle = 'padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; text-align: center; white-space: nowrap;';
+    if (pillClass === 'green') {
+      pillStyle += ' background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2);';
+    } else if (pillClass === 'red') {
+      pillStyle += ' background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);';
+    } else {
+      pillStyle += ' background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2);';
+    }
+
     stocksHtml += `        <!-- Asset Card for ${stock.ticker} -->
-        <div class="glass-card">
-            <div class="flex-row">
+        <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
+            <div class="flex-row" style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                    <div class="sym-block">${stock.ticker}</div>
-                    <div class="sub-block">${subText}</div>
+                    <div class="sym-block" style="font-weight: 700; font-size: 1.05rem; color: #f1f5f9;">${stock.ticker}</div>
+                    <div class="sub-block" style="font-size: 0.75rem; color: #64748b; margin-top: 2px; font-weight: 500;">${subText}</div>
                 </div>
-                <div class="p-pill ${pillClass}">${d1Change}</div>
+                <div class="p-pill ${pillClass}" style="${pillStyle}">${d1Change}</div>
             </div>
             ${stock.headline ? `<div style="font-size: 0.75rem; color: #94a3b8; font-style: italic; margin-top: 6px; margin-bottom: 4px;">${stock.headline}</div>` : ''}
-            <div class="body-msg">${stock.read}</div>
-            <div class="trigger">⚡ Catalyst: ${stock.catalyst}</div>
+            <div class="body-msg" style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.45; margin: 10px 0;">${stock.read}</div>
+            <div class="trigger" style="font-size: 0.78rem; color: #fbbf24; display: flex; align-items: center; gap: 6px; background: rgba(251, 191, 36, 0.05); padding: 6px 10px; border-radius: 6px; border: 1px dashed rgba(251, 191, 36, 0.2);">⚡ Catalyst: ${stock.catalyst}</div>
         </div>\n`;
   }
 
   // Generate Watchpoints HTML
   let horizonsHtml = '';
   for (const wp of parsed.watchpoints) {
-    horizonsHtml += `            <div class="horizon-row">
-                <span class="date-tag">${wp.date}</span>
-                <span class="event-tag">${wp.event}</span>
+    horizonsHtml += `            <div class="horizon-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.06);">
+                <span class="date-tag" style="color: #38bdf8; font-weight: 700; font-size: 0.85rem;">${wp.date}</span>
+                <span class="event-tag" style="font-size: 0.88rem; color: #e2e8f0; text-align: right;">${wp.event}</span>
             </div>\n`;
   }
   if (!horizonsHtml) {
-    horizonsHtml = `            <div class="horizon-row">
-                <span class="date-tag">Upcoming</span>
-                <span class="event-tag">No major watchpoints for the next 7 days.</span>
+    horizonsHtml = `            <div class="horizon-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.06);">
+                <span class="date-tag" style="color: #38bdf8; font-weight: 700; font-size: 0.85rem;">Upcoming</span>
+                <span class="event-tag" style="font-size: 0.88rem; color: #e2e8f0; text-align: right;">No major watchpoints for the next 7 days.</span>
             </div>\n`;
   }
 
@@ -820,29 +788,29 @@ function renderHtml(reportText, reportDate) {
         }
     </style>
 </head>
-<body>
+<body style="margin: 0; padding: 0; background-color: #0f172a;">
+    <div style="background: #0f172a; background-image: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #f8fafc; padding: 16px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.4;">
+        <div class="container" style="max-width: 440px; margin: 0 auto;">
+            <!-- Header Container -->
+            <div class="glass-head" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);">
+                <div class="title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.05em; color: #38bdf8;">STOCK INTELLIGENCE</div>
+                <div class="date-sub" style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${reportDate}</div>
+            </div>
 
-    <div class="container">
-        <!-- Header Container -->
-        <div class="glass-head">
-            <div class="title">STOCK INTELLIGENCE</div>
-            <div class="date-sub">${reportDate}</div>
-        </div>
-
-        <!-- Macro Section -->
-        <div class="section-label">Market Pulse</div>
-        <div class="glass-card">
+            <!-- Macro Section -->
+            <div class="section-label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #818cf8; letter-spacing: 0.1em; margin: 20px 0 8px 4px;">Market Pulse</div>
+            <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
 ${pulseHtml}        </div>
 
-        <!-- Portfolio Equities Section -->
-        <div class="section-label">Active Portfolios</div>
+            <!-- Portfolio Equities Section -->
+            <div class="section-label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #818cf8; letter-spacing: 0.1em; margin: 20px 0 8px 4px;">Active Portfolios</div>
 ${stocksHtml}
-        <!-- Horizons / Watchpoints Section -->
-        <div class="section-label">7-Day Horizons</div>
-        <div class="glass-card" style="padding: 12px 14px;">
+            <!-- Horizons / Watchpoints Section -->
+            <div class="section-label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #818cf8; letter-spacing: 0.1em; margin: 20px 0 8px 4px;">7-Day Horizons</div>
+            <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
 ${horizonsHtml}        </div>
+        </div>
     </div>
-
 </body>
 </html>`;
 }
