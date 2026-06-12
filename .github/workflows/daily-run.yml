@@ -1,0 +1,29 @@
+name: Wake and Trigger Stock Intelligence
+
+on:
+  schedule:
+    # Run every Monday to Friday at 1:30 AM UTC (7:00 AM IST)
+    - cron: '30 1 * * 1-5'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Service
+        run: |
+          echo "Sending wake-up request..."
+          # Send a request with a retry loop to wait for spin-up
+          for i in {1..5}; do
+            echo "Attempt $i..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "https://stock-intelligence-yjsf.onrender.com/api/cron-trigger")
+            echo "HTTP Status: $RESPONSE"
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Successfully triggered!"
+              exit 0
+            fi
+            echo "Sleeping 20 seconds before retry..."
+            sleep 20
+          done
+          echo "Failed to trigger within 5 attempts."
+          exit 1
