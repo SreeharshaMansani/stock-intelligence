@@ -180,7 +180,8 @@ _{Headline} — {Source}_
 - {Stock}: {specific fact}
 
 ## Watchpoints — Next 7 Days
-- {Specific upcoming catalyst}`;
+For each upcoming corporate action, event, or catalyst with a known date in the next 7 days, output a bullet point in the format:
+- {Date}: {Event Details} (e.g. - June 15: Vedanta Demerger Launch or - June 16: Nalco Investor Meet). Keep the date and event highly concise.`;
 
   return { prompt, row_count: rows.length, _degraded: false };
 }
@@ -443,58 +444,405 @@ async function generateReport(prompt) {
 
 /** Convert markdown report to HTML (mirrors Prepare Report Vars + Render HTML nodes) */
 function renderHtml(reportText, reportDate) {
-  const reportHtml = reportText
-    .replace(/\*\*\[BUY\]\*\*/g,  '<span class="badge buy">BUY</span>')
-    .replace(/\*\*\[HOLD\]\*\*/g, '<span class="badge hold">HOLD</span>')
-    .replace(/\*\*\[WAIT\]\*\*/g, '<span class="badge wait">WAIT</span>')
-    .replace(/\*\*\[SELL\]\*\*/g, '<span class="badge sell">SELL</span>')
-    .replace(/^⚡ \*Catalyst:\* (.+)$/gm, '<div class="catalyst">⚡ <strong>Catalyst:</strong> $1</div>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/_(.+?)_/g, '<em>$1</em>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/^→ (.+)$/gm, '<div class="read">→ $1</div>')
-    .replace(/\n/g, '<br>');
+  // Helper to parse the Gemini generated markdown report
+  function parseMarkdown(text) {
+    const sections = {
+      marketPulse: [],
+      stocks: [],
+      watchpoints: []
+    };
 
-  return `<!DOCTYPE html>
+    let currentSection = '';
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (line.startsWith('## ')) {
+        const title = line.substring(3).toLowerCase();
+        if (title.includes('pulse')) {
+          currentSection = 'marketPulse';
+        } else if (title.includes('stocks')) {
+          currentSection = 'stocks';
+        } else if (title.includes('watchpoint') || title.includes('horizon')) {
+          currentSection = 'watchpoints';
+        } else {
+          currentSection = '';
+        }
+        continue;
+      }
+
+      if (currentSection === 'marketPulse') {
+        const cleaned = line.replace(/^[🔹•\-*]\s*/, '');
+        sections.marketPulse.push(cleaned);
+      } else if (currentSection === 'stocks') {
+        const headerRegex = /\*\*([^*]+)\*\*\s*—\s*([^(\s]+)\s*\(([^)]+)\)\s*—\s*\*\*\[([^\]]+)\]\*\*/;
+        const match = line.match(headerRegex);
+        if (match) {
+          const stockObj = {
+            ticker: match[1].trim(),
+            price: match[2].trim(),
+            change: match[3].trim(),
+            action: match[4].trim(),
+            headline: '',
+            read: '',
+            catalyst: ''
+          };
+
+          if (i + 1 < lines.length) {
+            stockObj.headline = lines[i + 1].replace(/^_+|_+$/g, '').trim();
+          }
+          if (i + 2 < lines.length) {
+            stockObj.read = lines[i + 2].replace(/^[→\-]+|^\s+/g, '').trim();
+          }
+          if (i + 3 < lines.length) {
+            stockObj.catalyst = lines[i + 3].replace(/^⚡?\s*\*Catalyst:\*\s*/i, '').replace(/^\*|\*$/g, '').trim();
+          }
+          sections.stocks.push(stockObj);
+          i += 3;
+        }
+      } else if (currentSection === 'watchpoints') {
+        const cleaned = line.replace(/^[-•*]\s*/, '');
+        const parts = cleaned.split(/[:\-]\s*(.+)/);
+        if (parts.length >= 2) {
+          sections.watchpoints.push({
+            date: parts[0].replace(/\*\*/g, '').trim(),
+            event: parts[1].trim()
+          });
+        } else {
+          sections.watchpoints.push({
+            date: 'Date',
+            event: cleaned
+          });
+        }
+      }
+    }
+
+    return sections;
+  }
+
+  function getPillClass(changeStr) {
+    if (changeStr.includes('-')) return 'red';
+    if (changeStr.includes('+') || parseFloat(changeStr) > 0) return 'green';
+    return 'halt';
+  }
+
+  const parsed = parseMarkdown(reportText);
+
+  // Fallback if no stocks were parsed (e.g. degraded run status report)
+  if (parsed.stocks.length === 0) {
+    const fallbackHtml = reportText.replace(/\n/g, '<br>');
+    return `<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #000000; margin: 0; padding: 24px 12px; color: #e2eaf3; }
-    .container { max-width: 680px; background: #0d1117; margin: 0 auto; padding: 32px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); border-top: 6px solid #00e5a0; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-    .header { text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 20px; margin-bottom: 24px; }
-    h1 { color: #ffffff; font-size: 24px; margin: 8px 0 0; letter-spacing: 0.5px; font-weight: 700; }
-    h2 { color: #ffffff; font-size: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px; margin-top: 28px; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-    .content { color: #c9d1d9; line-height: 1.7; font-size: 14px; }
-    .read { margin-left: 12px; margin-top: 4px; color: #a3b3c2; font-size: 13.5px; }
-    .catalyst { margin-left: 12px; margin-top: 8px; margin-bottom: 12px; background: rgba(230, 126, 34, 0.08); border-left: 3px solid #ff9f43; padding: 8px 12px; border-radius: 4px; color: #ff9f43; font-size: 13px; line-height: 1.5; }
-    em { color: #8b9eb0; font-style: italic; font-size: 13px; }
-    strong { color: #ffffff; }
-    li { margin-left: 20px; margin-bottom: 6px; color: #c9d1d9; }
-    .footer { margin-top: 36px; text-align: center; font-size: 11px; color: #8b9eb0; opacity: 0.6; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 20px; }
-    .tag { display: inline-block; background: rgba(0, 229, 160, 0.12); color: #00e5a0; border: 1px solid rgba(0, 229, 160, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
-    .badge.buy  { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.25); }
-    .badge.hold { background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.25); }
-    .badge.wait { background: rgba(149, 165, 166, 0.15); color: #bdc3c7; border: 1px solid rgba(149, 165, 166, 0.25); }
-    .badge.sell { background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.25); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Intelligence - Notification</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #f8fafc;
+            padding: 24px 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            min-height: 100vh;
+            line-height: 1.45;
+        }
+        .container { max-width: 440px; margin: 0 auto; }
+        .glass-head {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        }
+        .title { 
+            font-size: 1.25rem; 
+            font-weight: 800; 
+            letter-spacing: 0.05em; 
+            background: linear-gradient(90deg, #ff6d5a, #fbbf24); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .body-msg { font-size: 0.88rem; color: #cbd5e1; line-height: 1.5; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="tag">PERSONAL RESEARCH NOTE</div>
-      <h1>Daily Stock Intelligence</h1>
-      <p style="color: #8b9eb0; margin: 4px 0 0; font-size: 13px;">${reportDate}</p>
+    <div class="container">
+        <div class="glass-head">
+            <div class="title">SYSTEM ALERT</div>
+            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${reportDate}</div>
+        </div>
+        <div class="glass-card">
+            <div class="body-msg">${fallbackHtml}</div>
+        </div>
     </div>
-    <div class="content">
-      ${reportHtml}
+</body>
+</html>`;
+  }
+
+  // Generate Market Pulse HTML
+  let pulseHtml = '';
+  for (const point of parsed.marketPulse) {
+    pulseHtml += `            <div class="bullet-point">🔹 ${point}</div>\n`;
+  }
+  if (!pulseHtml) {
+    pulseHtml = `            <div class="bullet-point">🔹 Market data loading completed successfully.</div>\n`;
+  }
+
+  // Generate Stocks HTML
+  let stocksHtml = '';
+  for (const stock of parsed.stocks) {
+    const changeParts = stock.change.split('/');
+    const d1Change = changeParts[0].trim();
+    const d5Change = changeParts.length > 1 ? changeParts[1].trim() : '';
+
+    const pillClass = getPillClass(d1Change);
+    const subText = d5Change ? `5D: ${d5Change} &bull; Signal: ${stock.action}` : `Signal: ${stock.action}`;
+
+    stocksHtml += `        <!-- Asset Card for ${stock.ticker} -->
+        <div class="glass-card">
+            <div class="flex-row">
+                <div>
+                    <div class="sym-block">${stock.ticker}</div>
+                    <div class="sub-block">${subText}</div>
+                </div>
+                <div class="p-pill ${pillClass}">${d1Change}</div>
+            </div>
+            ${stock.headline ? `<div style="font-size: 0.75rem; color: #94a3b8; font-style: italic; margin-top: 6px; margin-bottom: 4px;">${stock.headline}</div>` : ''}
+            <div class="body-msg">${stock.read}</div>
+            <div class="trigger">⚡ Catalyst: ${stock.catalyst}</div>
+        </div>\n`;
+  }
+
+  // Generate Watchpoints HTML
+  let horizonsHtml = '';
+  for (const wp of parsed.watchpoints) {
+    horizonsHtml += `            <div class="horizon-row">
+                <span class="date-tag">${wp.date}</span>
+                <span class="event-tag">${wp.event}</span>
+            </div>\n`;
+  }
+  if (!horizonsHtml) {
+    horizonsHtml = `            <div class="horizon-row">
+                <span class="date-tag">Upcoming</span>
+                <span class="event-tag">No major watchpoints for the next 7 days.</span>
+            </div>\n`;
+  }
+
+  // Render the complete Glassmorphic template
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Intelligence - FinTech Glass</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #f8fafc;
+            padding: 16px 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            min-height: 100vh;
+            line-height: 1.4;
+        }
+        
+        .container { 
+            max-width: 440px; 
+            margin: 0 auto; 
+        }
+        
+        .glass-head {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .title { 
+            font-size: 1.25rem; 
+            font-weight: 800; 
+            letter-spacing: 0.05em; 
+            background: linear-gradient(90deg, #38bdf8, #818cf8); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        
+        .date-sub { 
+            font-size: 0.78rem; 
+            color: #94a3b8; 
+            margin-top: 4px; 
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .section-label { 
+            font-size: 0.72rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            color: #818cf8; 
+            letter-spacing: 0.1em; 
+            margin: 20px 0 8px 4px; 
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .flex-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+        }
+        
+        .sym-block { 
+            font-weight: 700; 
+            font-size: 1.05rem; 
+            color: #f1f5f9; 
+        }
+        
+        .sub-block { 
+            font-size: 0.75rem; 
+            color: #64748b; 
+            margin-top: 2px; 
+            font-weight: 500;
+        }
+        
+        .p-pill { 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            font-weight: 700; 
+            font-size: 0.78rem; 
+        }
+        
+        .p-pill.green { 
+            background: rgba(16, 185, 129, 0.1); 
+            color: #34d399; 
+            border: 1px solid rgba(16, 185, 129, 0.2); 
+        }
+        
+        .p-pill.red { 
+            background: rgba(239, 68, 68, 0.1); 
+            color: #f87171; 
+            border: 1px solid rgba(239, 68, 68, 0.2); 
+        }
+        
+        .p-pill.halt { 
+            background: rgba(148, 163, 184, 0.1); 
+            color: #94a3b8; 
+            border: 1px solid rgba(148, 163, 184, 0.2); 
+        }
+
+        .body-msg { 
+            font-size: 0.88rem; 
+            color: #cbd5e1; 
+            line-height: 1.45; 
+            margin: 10px 0; 
+        }
+        
+        .trigger { 
+            font-size: 0.78rem; 
+            color: #fbbf24; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            background: rgba(251, 191, 36, 0.05); 
+            padding: 6px 10px; 
+            border-radius: 6px; 
+            border: 1px dashed rgba(251, 191, 36, 0.2);
+        }
+        
+        .bullet-point { 
+            font-size: 0.88rem; 
+            color: #cbd5e1; 
+            margin-bottom: 8px; 
+            line-height: 1.4; 
+        }
+        
+        .bullet-point:last-child { 
+            margin-bottom: 0; 
+        }
+        
+        .horizon-row {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+        }
+        
+        .horizon-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .horizon-row:first-child {
+            padding-top: 0;
+        }
+        
+        .date-tag {
+            color: #38bdf8;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        
+        .event-tag {
+            font-size: 0.88rem;
+            color: #e2e8f0;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header Container -->
+        <div class="glass-head">
+            <div class="title">STOCK INTELLIGENCE</div>
+            <div class="date-sub">${reportDate}</div>
+        </div>
+
+        <!-- Macro Section -->
+        <div class="section-label">Market Pulse</div>
+        <div class="glass-card">
+${pulseHtml}        </div>
+
+        <!-- Portfolio Equities Section -->
+        <div class="section-label">Active Portfolios</div>
+${stocksHtml}
+        <!-- Horizons / Watchpoints Section -->
+        <div class="section-label">7-Day Horizons</div>
+        <div class="glass-card" style="padding: 12px 14px;">
+${horizonsHtml}        </div>
     </div>
-    <div class="footer">
-      &copy; ${new Date().getFullYear()} Stock Intelligence Bot · Google News + Yahoo Finance + Macro Context + Gemini · Not financial advice
-    </div>
-  </div>
+
 </body>
 </html>`;
 }
