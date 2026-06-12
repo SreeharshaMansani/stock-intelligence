@@ -461,23 +461,24 @@ function renderHtml(reportText, reportDate) {
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: -apple-system, 'Segoe UI', Tahoma, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: #2c3e50; }
-    .container { max-width: 720px; background: #fff; margin: 0 auto; padding: 32px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-top: 6px solid #ff6d5a; }
-    .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 16px; margin-bottom: 24px; }
-    h1 { color: #2c3e50; font-size: 22px; margin: 0; letter-spacing: 0.5px; }
-    h2 { color: #2c3e50; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-top: 24px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
-    .content { color: #34495e; line-height: 1.65; font-size: 14px; }
-    .read { margin-left: 12px; color: #5a6c7d; font-size: 13px; }
-    .catalyst { margin-left: 12px; margin-top: 4px; color: #e67e22; font-size: 13px; }
-    em { color: #7f8c8d; font-style: italic; font-size: 13px; }
-    li { margin-left: 20px; }
-    .footer { margin-top: 32px; text-align: center; font-size: 11px; color: #95a5a6; border-top: 1px solid #eee; padding-top: 16px; }
-    .tag { display: inline-block; background: #ff6d5a; color: white; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 8px; }
-    .badge { display: inline-block; padding: 2px 9px; border-radius: 4px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; }
-    .badge.buy  { background: #27ae60; color: white; }
-    .badge.hold { background: #f39c12; color: white; }
-    .badge.wait { background: #95a5a6; color: white; }
-    .badge.sell { background: #e74c3c; color: white; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #000000; margin: 0; padding: 24px 12px; color: #e2eaf3; }
+    .container { max-width: 680px; background: #0d1117; margin: 0 auto; padding: 32px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); border-top: 6px solid #00e5a0; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    .header { text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 20px; margin-bottom: 24px; }
+    h1 { color: #ffffff; font-size: 24px; margin: 8px 0 0; letter-spacing: 0.5px; font-weight: 700; }
+    h2 { color: #ffffff; font-size: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px; margin-top: 28px; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+    .content { color: #c9d1d9; line-height: 1.7; font-size: 14px; }
+    .read { margin-left: 12px; margin-top: 4px; color: #a3b3c2; font-size: 13.5px; }
+    .catalyst { margin-left: 12px; margin-top: 8px; margin-bottom: 12px; background: rgba(230, 126, 34, 0.08); border-left: 3px solid #ff9f43; padding: 8px 12px; border-radius: 4px; color: #ff9f43; font-size: 13px; line-height: 1.5; }
+    em { color: #8b9eb0; font-style: italic; font-size: 13px; }
+    strong { color: #ffffff; }
+    li { margin-left: 20px; margin-bottom: 6px; color: #c9d1d9; }
+    .footer { margin-top: 36px; text-align: center; font-size: 11px; color: #8b9eb0; opacity: 0.6; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 20px; }
+    .tag { display: inline-block; background: rgba(0, 229, 160, 0.12); color: #00e5a0; border: 1px solid rgba(0, 229, 160, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
+    .badge.buy  { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.25); }
+    .badge.hold { background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.25); }
+    .badge.wait { background: rgba(149, 165, 166, 0.15); color: #bdc3c7; border: 1px solid rgba(149, 165, 166, 0.25); }
+    .badge.sell { background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.25); }
   </style>
 </head>
 <body>
@@ -485,7 +486,7 @@ function renderHtml(reportText, reportDate) {
     <div class="header">
       <div class="tag">PERSONAL RESEARCH NOTE</div>
       <h1>Daily Stock Intelligence</h1>
-      <p style="color: #7f8c8d; margin: 4px 0 0; font-size: 13px;">${reportDate}</p>
+      <p style="color: #8b9eb0; margin: 4px 0 0; font-size: 13px;">${reportDate}</p>
     </div>
     <div class="content">
       ${reportHtml}
