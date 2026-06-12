@@ -2,15 +2,22 @@
 
 An enterprise-grade, lightweight Node.js implementation of the **Daily Stock Intelligence Report** pipeline and interactive **Control Center Dashboard**. 
 
-This system is optimized for a **100% free, card-free cloud deployment** using **Render**, **Google AI Studio (Gemini)**, **Resend**, and **cron-job.org**. You will **not** need to enter any credit card or billing details.
+This system is optimized for a **100% free, card-free cloud deployment** using **Render**, **Google AI Studio (Gemini)**, **Resend**, and **GitHub Actions**. You will **not** need to enter any credit card or billing details.
 
 ---
+
+### 📬 Sample Email Output
+![Sample Email Output](assets/sample_output.png)
+
+---
+
 https://sreeharshamansani.github.io/stock-intelligence/
+
 ## 🌟 How the Zero-Card Cloud Architecture Works
 
 ```mermaid
 graph TD
-    A[cron-job.org <br> 7:00 AM IST Ping] -- GET /api/cron-trigger --> B(Render Free Web Service)
+    A[GitHub Actions <br> 7:00 AM IST Schedule] -- GET /api/cron-trigger --> B(Render Free Web Service)
     B -- Wakes Up Container --> C[dashboard-server.js]
     C -- Spawns Background Worker --> D[index.js --now]
     D -- Reads --> E[Google Sheets API]
@@ -21,7 +28,7 @@ graph TD
 
 1. **Host Dashboard on Render**: Link your GitHub repository to [Render](https://render.com). The interactive web dashboard and background scheduler run in a single web service.
 2. **Auto-Sleep Handling**: Render's free tier sleeps after 15 minutes of inactivity to save resources.
-3. **Daily Trigger**: [cron-job.org](https://cron-job.org/) (100% free, no credit card required) pings `https://your-app.onrender.com/api/cron-trigger` at **7:00 AM IST** every weekday.
+3. **Daily Trigger**: A free GitHub Actions workflow pings `https://your-app.onrender.com/api/cron-trigger` at **7:00 AM IST** every weekday.
 4. **Instant Run**: This request wakes up your Render container, which instantly executes your entire stock analysis pipeline, compiles the report, and emails it to your inbox!
 
 ---
@@ -145,21 +152,19 @@ Open [http://localhost:3000](http://localhost:3000) to access the Control Center
 
 ---
 
-## ⏰ Step 6: Configure the Daily Schedule on `cron-job.org`
+## ⏰ Step 6: Configure the Daily Schedule on GitHub Actions
 
-Because Render Free Web Services sleep after 15 minutes of inactivity, we use `cron-job.org` to wake up the app and trigger the daily stock pipeline.
+Because Render Free Web Services sleep after 15 minutes of inactivity, we use a GitHub Actions workflow that executes every weekday morning to ping the wake-up endpoint, retry automatically while the container spins up, and trigger the pipeline.
 
-1. Go to [cron-job.org](https://cron-job.org/) and create a free account.
-2. Click **Create Cronjob**.
-3. Configure the Cronjob:
-   * **Title**: `Stock Intelligence Daily Run`
-   * **Address (URL)**: `https://<YOUR_RENDER_APP_NAME>.onrender.com/api/cron-trigger`
-     *(Replace `<YOUR_RENDER_APP_NAME>` with the subdomain assigned to your service by Render, e.g. `https://stock-intelligence-abc.onrender.com/api/cron-trigger`)*
-   * **Request Method**: `GET`
-   * **Schedule**: Select **User-defined** ➔ **Days of week**: Monday through Friday.
-   * **Time**: Select **07:00** (7:00 AM).
-   * **Timezone**: Select **Asia/Kolkata** (IST).
-4. Click **Create**.
+1. In your project repository, check that the workflow file exists at `.github/workflows/daily-run.yml`.
+2. Ensure you have replaced `https://stock-intelligence-yjsf.onrender.com/api/cron-trigger` in the workflow file with your own Render Web Service URL if it is different.
+3. Commit and push the file to your repository:
+   ```bash
+   git add .github/workflows/daily-run.yml
+   git commit -m "Configure production cloud-trigger schedule via GitHub Actions"
+   git push origin main
+   ```
+4. Go to your repository on GitHub, click the **Actions** tab, select **"Wake and Trigger Stock Intelligence"**, and click **"Run workflow"** to test it immediately. It will automatically run on a schedule every Monday–Friday at 7:00 AM IST.
 
 ---
 
