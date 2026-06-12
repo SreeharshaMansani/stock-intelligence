@@ -5,12 +5,6 @@ An enterprise-grade, lightweight Node.js implementation of the **Daily Stock Int
 This system is optimized for a **100% free, card-free cloud deployment** using **Render**, **Google AI Studio (Gemini)**, **Resend**, and **GitHub Actions**. You will **not** need to enter any credit card or billing details.
 
 ---
-
-### 📬 Sample Email Output
-![Sample Email Output](assets/sample_output.png)
-
----
-
 https://sreeharshamansani.github.io/stock-intelligence/
 
 ## 🌟 How the Zero-Card Cloud Architecture Works
