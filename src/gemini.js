@@ -615,23 +615,14 @@ function renderHtml(reportText, reportDate) {
       label += ` (5D: ${d5Change})`;
     }
 
-    let catalystContent = '';
-    if (stock.headline) {
-      catalystContent += `📰 ${stock.headline}\n\n`;
-    }
-    if (stock.read) {
-      catalystContent += `${stock.read}\n\n`;
-    }
-    if (stock.catalyst) {
-      catalystContent += `⚡ Catalyst: ${stock.catalyst}`;
-    }
-
     return {
       symbol: stock.ticker,
       label: label.trim(),
       changePct,
       signal,
-      catalyst: catalystContent.trim()
+      headline: stock.headline,
+      read: stock.read,
+      catalyst: stock.catalyst
     };
   });
 
@@ -647,24 +638,58 @@ function renderHtml(reportText, reportDate) {
       const s = sigStyles(q.signal);
       return `
   <tr><td style="padding:0 18px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0;border:1px solid #eef0f3;border-left:3px solid ${s.bar};border-radius:10px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0;border:1px solid #eef0f3;border-left:4px solid ${s.bar};border-radius:12px;box-shadow:0 1px 3px rgba(15,23,42,.02);background:#ffffff;">
       <tr>
-        <td style="padding:12px 14px;vertical-align:top;">
-          <div style="font:700 14px/1.2 ${FONT};color:#0f172a;letter-spacing:.2px;">
-            ${escapeHtml(q.symbol.replace(".NS", ""))}
-            <span style="font-weight:500;color:#94a3b8;font-size:11px;margin-left:6px;text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(q.label)}</span>
+        <td style="padding:16px;vertical-align:top;">
+          
+          <!-- Card Header (Ticker + Label / Price) -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align:middle;">
+                <span style="font:700 16px/1.2 ${FONT};color:#0f172a;letter-spacing:.2px;">
+                  ${escapeHtml(q.symbol.replace(".NS", ""))}
+                </span>
+                <span style="font:500 11px/1.2 ${FONT};color:#64748b;margin-left:8px;text-transform:uppercase;letter-spacing:.6px;">
+                  ${escapeHtml(q.label)}
+                </span>
+              </td>
+              <td align="right" style="vertical-align:middle;white-space:nowrap;">
+                <div style="font:700 14px/1.2 ${FONT};color:${changeColor(q.changePct)};margin-bottom:4px;">
+                  ${fmtPct(q.changePct)}
+                </div>
+                <div style="display:inline-block;padding:6px 14px;border-radius:6px;background:${s.bg};color:${s.fg};font:800 11px/1 ${FONT};letter-spacing:1.2px;text-transform:uppercase;border:1px solid ${s.bar}20;">
+                  ${q.signal}
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Card Content Sections -->
+          <div style="margin-top:14px;">
+            
+            <!-- News Section (Styled Quote Box) -->
+            ${q.headline ? `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+              <span style="font:700 10px/1 ${FONT};color:#64748b;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">📰 LATEST NEWS</span>
+              <span style="font:400 12.5px/1.45 ${FONT};color:#334155;">${escapeHtml(q.headline)}</span>
+            </div>` : ''}
+
+            <!-- Analysis Section -->
+            ${q.read ? `
+            <div style="font:400 13.5px/1.55 ${FONT};color:#334155;margin-bottom:12px;padding:0 2px;">
+              ${escapeHtml(q.read)}
+            </div>` : ''}
+
+            <!-- Catalyst Section (Amber Callout) -->
+            ${q.catalyst ? `
+            <div style="background:#fffbeb;border:1px dashed #fcd34d;border-radius:8px;padding:10px 12px;">
+              <div style="font:700 12.5px/1.45 ${FONT};color:#78350f;">
+                ⚡ Catalyst: <span style="font-weight:400;color:#92400e;">${escapeHtml(q.catalyst)}</span>
+              </div>
+            </div>` : ''}
+
           </div>
-          <div style="margin-top:6px;font:400 13px/1.5 ${FONT};color:#475569;white-space:pre-wrap;">
-            ${escapeHtml(q.catalyst)}
-          </div>
-        </td>
-        <td align="right" style="padding:12px 14px;vertical-align:top;white-space:nowrap;">
-          <div style="font:600 13px/1.2 ${FONT};color:${changeColor(q.changePct)};">
-            ${fmtPct(q.changePct)}
-          </div>
-          <div style="margin-top:8px;display:inline-block;padding:4px 9px;border-radius:6px;background:${s.bg};color:${s.fg};font:700 10px/1 ${FONT};letter-spacing:1px;">
-            ${q.signal}
-          </div>
+
         </td>
       </tr>
     </table>
