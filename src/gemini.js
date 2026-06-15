@@ -521,298 +521,208 @@ function renderHtml(reportText, reportDate) {
     return sections;
   }
 
-  function getPillClass(changeStr) {
-    if (changeStr.includes('-')) return 'red';
-    if (changeStr.includes('+') || parseFloat(changeStr) > 0) return 'green';
-    return 'halt';
+  function escapeHtml(s) {
+    if (!s) return '';
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   const parsed = parseMarkdown(reportText);
 
+  const FONT = "ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+
+  const fmtPct = (n) =>
+    n === undefined || Number.isNaN(n)
+      ? "—"
+      : `${n > 0 ? "▲" : n < 0 ? "▼" : "•"} ${Math.abs(n).toFixed(2)}%`;
+
+  const sigStyles = (s) => {
+    if (s === "BUY") return { bg: "#ecfdf5", fg: "#047857", bar: "#10b981" };
+    if (s === "SELL") return { bg: "#fef2f2", fg: "#b91c1c", bar: "#ef4444" };
+    return { bg: "#fffbeb", fg: "#92400e", bar: "#f59e0b" };
+  };
+
+  const changeColor = (n) =>
+    n === undefined ? "#64748b" : n >= 0 ? "#047857" : "#b91c1c";
+
   // Fallback if no stocks were parsed (e.g. degraded run status report)
   if (parsed.stocks.length === 0) {
-    return `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Intelligence - Notification</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #0f172a;">
-    <div style="background: #0f172a; background-image: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #f8fafc; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.45;">
-        <div class="container" style="max-width: 440px; margin: 0 auto;">
-            <div class="glass-head" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);">
-                <div class="title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.05em; color: #38bdf8;">SYSTEM ALERT</div>
-                <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${reportDate}</div>
-            </div>
-            <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
-                <div class="body-msg" style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.5;">${fallbackHtml}</div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>`;
+    return `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stock Intelligence - Alert</title></head>
+<body style="margin:0;padding:0;background:#f1f3f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f3f6;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
+
+        <!-- Header -->
+        <tr><td style="background:#0f172a;padding:20px 22px;">
+          <table width="100%"><tr>
+            <td>
+              <div style="font:700 11px/1 ${FONT};color:#f87171;letter-spacing:2px;">SYSTEM ALERT</div>
+              <div style="margin-top:8px;font:600 20px/1.2 ${FONT};color:#ffffff;letter-spacing:-.3px;">Stock Intelligence</div>
+            </td>
+            <td align="right" style="font:500 12px/1.4 ${FONT};color:#94a3b8;">${escapeHtml(reportDate)}</td>
+          </tr></table>
+        </td></tr>
+
+        <!-- Alert Content -->
+        <tr><td style="padding:22px 22px 28px;">
+          <div style="font:700 10px/1 ${FONT};color:#ef4444;letter-spacing:2px;margin-bottom:12px;">STATUS REPORT</div>
+          <div style="font:400 14px/1.65 ${FONT};color:#334155;background:#fef2f2;border:1px solid #fee2e2;border-left:4px solid #ef4444;border-radius:8px;padding:16px;white-space:pre-wrap;">${escapeHtml(reportText)}</div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:16px 22px;background:#fafbfc;border-top:1px solid #eef0f3;font:400 11px/1.55 ${FONT};color:#94a3b8;">
+          Generated automatically · Not investment advice · System diagnostic alert
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
   }
 
-  // Generate Market Pulse HTML
-  let pulseHtml = '';
-  for (const point of parsed.marketPulse) {
-    pulseHtml += `            <div class="bullet-point" style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 8px; line-height: 1.4;">🔹 ${point}</div>\n`;
-  }
-  if (!pulseHtml) {
-    pulseHtml = `            <div class="bullet-point" style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 8px; line-height: 1.4;">🔹 Market data loading completed successfully.</div>\n`;
-  }
+  const marketPulse = parsed.marketPulse.join(' ');
 
-  // Generate Stocks HTML
-  let stocksHtml = '';
-  for (const stock of parsed.stocks) {
-    const changeParts = stock.change.split('/');
-    const d1Change = changeParts[0].trim();
-    const d5Change = changeParts.length > 1 ? changeParts[1].trim() : '';
+  const quotes = parsed.stocks.map(stock => {
+    let signal = "WAIT";
+    if (stock.action === "BUY") signal = "BUY";
+    else if (stock.action === "SELL") signal = "SELL";
 
-    const pillClass = getPillClass(d1Change);
-    const subText = d5Change ? `5D: ${d5Change} &bull; Signal: ${stock.action}` : `Signal: ${stock.action}`;
-
-    let pillStyle = 'padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; text-align: center; white-space: nowrap;';
-    if (pillClass === 'green') {
-      pillStyle += ' background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2);';
-    } else if (pillClass === 'red') {
-      pillStyle += ' background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);';
-    } else {
-      pillStyle += ' background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2);';
+    let changePct = undefined;
+    if (stock.change) {
+      const parts = stock.change.split('/');
+      const d1Str = parts[0].trim().replace('%', '');
+      const val = parseFloat(d1Str);
+      if (!isNaN(val)) {
+        changePct = val;
+      }
     }
 
-    stocksHtml += `        <!-- Asset Card for ${stock.ticker} -->
-        <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
-            <div class="flex-row" style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <div class="sym-block" style="font-weight: 700; font-size: 1.05rem; color: #f1f5f9;">${stock.ticker}</div>
-                    <div class="sub-block" style="font-size: 0.75rem; color: #64748b; margin-top: 2px; font-weight: 500;">${subText}</div>
-                </div>
-                <div class="p-pill ${pillClass}" style="${pillStyle}">${d1Change}</div>
-            </div>
-            ${stock.headline ? `<div style="font-size: 0.75rem; color: #94a3b8; font-style: italic; margin-top: 6px; margin-bottom: 4px;">${stock.headline}</div>` : ''}
-            <div class="body-msg" style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.45; margin: 10px 0;">${stock.read}</div>
-            <div class="trigger" style="font-size: 0.78rem; color: #fbbf24; display: flex; align-items: center; gap: 6px; background: rgba(251, 191, 36, 0.05); padding: 6px 10px; border-radius: 6px; border: 1px dashed rgba(251, 191, 36, 0.2);">⚡ Catalyst: ${stock.catalyst}</div>
-        </div>\n`;
+    let d5Change = '';
+    if (stock.change) {
+      const parts = stock.change.split('/');
+      if (parts.length > 1) {
+        d5Change = parts[1].trim();
+      }
+    }
+
+    let label = stock.price || '';
+    if (d5Change) {
+      label += ` (5D: ${d5Change})`;
+    }
+
+    let catalystContent = '';
+    if (stock.headline) {
+      catalystContent += `📰 ${stock.headline}\n\n`;
+    }
+    if (stock.read) {
+      catalystContent += `${stock.read}\n\n`;
+    }
+    if (stock.catalyst) {
+      catalystContent += `⚡ Catalyst: ${stock.catalyst}`;
+    }
+
+    return {
+      symbol: stock.ticker,
+      label: label.trim(),
+      changePct,
+      signal,
+      catalyst: catalystContent.trim()
+    };
+  });
+
+  let horizonNote = '';
+  if (parsed.watchpoints && parsed.watchpoints.length > 0) {
+    horizonNote = parsed.watchpoints.map(wp => `• ${wp.date}: ${wp.event}`).join('\n');
+  } else {
+    horizonNote = 'No known upcoming corporate actions or events in the next 7 days.';
   }
 
-  // Generate Watchpoints HTML
-  let horizonsHtml = '';
-  for (const wp of parsed.watchpoints) {
-    horizonsHtml += `            <div class="horizon-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.06);">
-                <span class="date-tag" style="color: #38bdf8; font-weight: 700; font-size: 0.85rem;">${wp.date}</span>
-                <span class="event-tag" style="font-size: 0.88rem; color: #e2e8f0; text-align: right;">${wp.event}</span>
-            </div>\n`;
-  }
-  if (!horizonsHtml) {
-    horizonsHtml = `            <div class="horizon-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.06);">
-                <span class="date-tag" style="color: #38bdf8; font-weight: 700; font-size: 0.85rem;">Upcoming</span>
-                <span class="event-tag" style="font-size: 0.88rem; color: #e2e8f0; text-align: right;">No major watchpoints for the next 7 days.</span>
-            </div>\n`;
-  }
+  const rows = quotes
+    .map((q) => {
+      const s = sigStyles(q.signal);
+      return `
+  <tr><td style="padding:0 18px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0;border:1px solid #eef0f3;border-left:3px solid ${s.bar};border-radius:10px;">
+      <tr>
+        <td style="padding:12px 14px;vertical-align:top;">
+          <div style="font:700 14px/1.2 ${FONT};color:#0f172a;letter-spacing:.2px;">
+            ${escapeHtml(q.symbol.replace(".NS", ""))}
+            <span style="font-weight:500;color:#94a3b8;font-size:11px;margin-left:6px;text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(q.label)}</span>
+          </div>
+          <div style="margin-top:6px;font:400 13px/1.5 ${FONT};color:#475569;white-space:pre-wrap;">
+            ${escapeHtml(q.catalyst)}
+          </div>
+        </td>
+        <td align="right" style="padding:12px 14px;vertical-align:top;white-space:nowrap;">
+          <div style="font:600 13px/1.2 ${FONT};color:${changeColor(q.changePct)};">
+            ${fmtPct(q.changePct)}
+          </div>
+          <div style="margin-top:8px;display:inline-block;padding:4px 9px;border-radius:6px;background:${s.bg};color:${s.fg};font:700 10px/1 ${FONT};letter-spacing:1px;">
+            ${q.signal}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </td></tr>`;
+    })
+    .join("");
 
-  // Render the complete Glassmorphic template
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Intelligence - FinTech Glass</title>
-    <style>
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            color: #f8fafc;
-            padding: 16px 12px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 14px;
-            min-height: 100vh;
-            line-height: 1.4;
-        }
-        
-        .container { 
-            max-width: 440px; 
-            margin: 0 auto; 
-        }
-        
-        .glass-head {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 16px;
-            text-align: center;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-        }
-        
-        .title { 
-            font-size: 1.25rem; 
-            font-weight: 800; 
-            letter-spacing: 0.05em; 
-            background: linear-gradient(90deg, #38bdf8, #818cf8); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
-        }
-        
-        .date-sub { 
-            font-size: 0.78rem; 
-            color: #94a3b8; 
-            margin-top: 4px; 
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Daily Stock Brief</title></head>
+<body style="margin:0;padding:0;background:#f1f3f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f3f6;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
 
-        .section-label { 
-            font-size: 0.72rem; 
-            font-weight: 700; 
-            text-transform: uppercase; 
-            color: #818cf8; 
-            letter-spacing: 0.1em; 
-            margin: 20px 0 8px 4px; 
-        }
+        <!-- Header -->
+        <tr><td style="background:#0f172a;padding:20px 22px;">
+          <table width="100%"><tr>
+            <td>
+              <div style="font:700 11px/1 ${FONT};color:#60a5fa;letter-spacing:2px;">DAILY · BRIEF</div>
+              <div style="margin-top:8px;font:600 20px/1.2 ${FONT};color:#ffffff;letter-spacing:-.3px;">Stock Intelligence</div>
+            </td>
+            <td align="right" style="font:500 12px/1.4 ${FONT};color:#94a3b8;">${escapeHtml(reportDate)}</td>
+          </tr></table>
+        </td></tr>
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
+        <!-- Market Pulse -->
+        <tr><td style="padding:22px 22px 6px;">
+          <div style="font:700 10px/1 ${FONT};color:#2563eb;letter-spacing:2px;">MARKET PULSE</div>
+          <p style="margin:8px 0 16px;font:400 14px/1.6 ${FONT};color:#475569;">${escapeHtml(marketPulse)}</p>
+        </td></tr>
 
-        .flex-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start; 
-        }
-        
-        .sym-block { 
-            font-weight: 700; 
-            font-size: 1.05rem; 
-            color: #f1f5f9; 
-        }
-        
-        .sub-block { 
-            font-size: 0.75rem; 
-            color: #64748b; 
-            margin-top: 2px; 
-            font-weight: 500;
-        }
-        
-        .p-pill { 
-            padding: 4px 8px; 
-            border-radius: 6px; 
-            font-weight: 700; 
-            font-size: 0.78rem; 
-        }
-        
-        .p-pill.green { 
-            background: rgba(16, 185, 129, 0.1); 
-            color: #34d399; 
-            border: 1px solid rgba(16, 185, 129, 0.2); 
-        }
-        
-        .p-pill.red { 
-            background: rgba(239, 68, 68, 0.1); 
-            color: #f87171; 
-            border: 1px solid rgba(239, 68, 68, 0.2); 
-        }
-        
-        .p-pill.halt { 
-            background: rgba(148, 163, 184, 0.1); 
-            color: #94a3b8; 
-            border: 1px solid rgba(148, 163, 184, 0.2); 
-        }
+        <!-- Divider -->
+        <tr><td style="padding:0 22px;"><div style="height:1px;background:#eef0f3;"></div></td></tr>
 
-        .body-msg { 
-            font-size: 0.88rem; 
-            color: #cbd5e1; 
-            line-height: 1.45; 
-            margin: 10px 0; 
-        }
-        
-        .trigger { 
-            font-size: 0.78rem; 
-            color: #fbbf24; 
-            display: flex; 
-            align-items: center; 
-            gap: 6px; 
-            background: rgba(251, 191, 36, 0.05); 
-            padding: 6px 10px; 
-            border-radius: 6px; 
-            border: 1px dashed rgba(251, 191, 36, 0.2);
-        }
-        
-        .bullet-point { 
-            font-size: 0.88rem; 
-            color: #cbd5e1; 
-            margin-bottom: 8px; 
-            line-height: 1.4; 
-        }
-        
-        .bullet-point:last-child { 
-            margin-bottom: 0; 
-        }
-        
-        .horizon-row {
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
-        }
-        
-        .horizon-row:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        
-        .horizon-row:first-child {
-            padding-top: 0;
-        }
-        
-        .date-tag {
-            color: #38bdf8;
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-        
-        .event-tag {
-            font-size: 0.88rem;
-            color: #e2e8f0;
-            text-align: right;
-        }
-    </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #0f172a;">
-    <div style="background: #0f172a; background-image: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #f8fafc; padding: 16px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.4;">
-        <div class="container" style="max-width: 440px; margin: 0 auto;">
-            <!-- Header Container -->
-            <div class="glass-head" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);">
-                <div class="title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.05em; color: #38bdf8;">STOCK INTELLIGENCE</div>
-                <div class="date-sub" style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${reportDate}</div>
-            </div>
+        <!-- Watchlist -->
+        <tr><td style="padding:18px 22px 4px;">
+          <div style="font:700 10px/1 ${FONT};color:#2563eb;letter-spacing:2px;">WATCHLIST</div>
+        </td></tr>
+        ${rows}
 
-            <!-- Macro Section -->
-            <div class="section-label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #818cf8; letter-spacing: 0.1em; margin: 20px 0 8px 4px;">Market Pulse</div>
-            <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
-${pulseHtml}        </div>
+        <!-- Horizon -->
+        <tr><td style="padding:18px 22px 6px;">
+          <div style="font:700 10px/1 ${FONT};color:#2563eb;letter-spacing:2px;">7-DAY HORIZON</div>
+          <p style="margin:8px 0 0;font:400 13px/1.55 ${FONT};color:#475569;white-space:pre-wrap;">${escapeHtml(horizonNote)}</p>
+        </td></tr>
 
-            <!-- Portfolio Equities Section -->
-            <div class="section-label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #818cf8; letter-spacing: 0.1em; margin: 20px 0 8px 4px;">Active Portfolios</div>
-${stocksHtml}
-            <!-- Horizons / Watchpoints Section -->
-            <div class="section-label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #818cf8; letter-spacing: 0.1em; margin: 20px 0 8px 4px;">7-Day Horizons</div>
-            <div class="glass-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
-${horizonsHtml}        </div>
-        </div>
-    </div>
-</body>
-</html>`;
+        <!-- Footer -->
+        <tr><td style="margin-top:18px;padding:16px 22px;background:#fafbfc;border-top:1px solid #eef0f3;font:400 11px/1.55 ${FONT};color:#94a3b8;">
+          Generated automatically · Not investment advice · Signals are heuristic
+        </td></tr>
+      </table>
+
+      <div style="max-width:560px;padding:14px 8px;font:400 11px/1.5 ${FONT};color:#94a3b8;text-align:center;">
+        You're receiving this because you're on the daily brief list.
+      </div>
+    </td></tr>
+  </table>
+</body></html>`;
 }
 
 module.exports = { buildGeminiPrompt, generateReport, renderHtml };
