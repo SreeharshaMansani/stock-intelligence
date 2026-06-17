@@ -1,11 +1,7 @@
 name: Wake and Trigger Stock Intelligence
 
 on:
-  schedule:
-    # Scheduled to run Monday to Friday at 1:18 AM UTC (6:48 AM IST)
-    # Shifting the cron to a non-standard minute (like :18) reduces GitHub Actions queuing delays.
-    - cron: '18 1 * * 1-5'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch: # Manual trigger only — daily scheduling handled by cron-job.org
 
 jobs:
   trigger:
