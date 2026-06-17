@@ -15,7 +15,15 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const server = http.createServer((req, res) => {
   console.log(`[HTTP] ${req.method} ${req.url}`);
 
-  // Route: GET /api/cron-trigger
+  // Route: GET /wake — dedicated wake-up ping (Job 1 on cron-job.org)
+  // This endpoint's only job is to boot Render. Failure/timeout here is expected and fine.
+  if (req.url === '/wake' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('awake');
+    return;
+  }
+
+  // Route: GET /api/cron-trigger — pipeline trigger (Job 2 on cron-job.org, 3 min after /wake)
   if (req.url === '/api/cron-trigger' && req.method === 'GET') {
     console.log('[Cron-Trigger] Received external trigger request. Spawning pipeline run...');
     
