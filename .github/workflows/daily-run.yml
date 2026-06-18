@@ -1,9 +1,7 @@
 name: Wake and Trigger Stock Intelligence
 
 on:
-  schedule:
-    - cron: '30 1 * * 1-5'   # 7:00 AM IST (1:30 AM UTC), Mon–Fri
-  workflow_dispatch:          # Also allow manual trigger
+  workflow_dispatch: # Manual trigger only — daily scheduling handled by cron-job.org
 
 jobs:
   trigger:
