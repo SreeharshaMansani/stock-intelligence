@@ -1,7 +1,11 @@
 'use strict';
 /**
  * dashboard-server.js — Simple API Control Server
- * Built for Daily Stock Intelligence Report (Oracle Free Tier / Cron Trigger).
+ * Built for Daily Stock Intelligence Report (Render Free Tier / Cron Trigger).
+ *
+ * Idempotency: /api/cron-trigger only spawns the pipeline ONCE per calendar day.
+ * This makes it safe to schedule multiple cron jobs — the first successful hit
+ * runs the pipeline; all subsequent hits that day are silently skipped.
  */
 
 const http = require('http');
@@ -12,22 +16,36 @@ require('dotenv').config();
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// Track the last date the pipeline was triggered (resets on container restart, which is fine)
+let lastRunDate = null;
+
 const server = http.createServer((req, res) => {
   console.log(`[HTTP] ${req.method} ${req.url}`);
 
-  // Route: GET /wake — dedicated wake-up ping (Job 1 on cron-job.org)
-  // This endpoint's only job is to boot Render. Failure/timeout here is expected and fine.
+  // Route: GET /wake — dedicated wake-up ping
+  // Only job: confirm the server is awake. Safe to call any number of times.
   if (req.url === '/wake' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('awake');
     return;
   }
 
-  // Route: GET /api/cron-trigger — pipeline trigger (Job 2 on cron-job.org, 3 min after /wake)
+  // Route: GET /api/cron-trigger — pipeline trigger
+  // Idempotent: only runs the pipeline once per calendar day (IST).
   if (req.url === '/api/cron-trigger' && req.method === 'GET') {
-    console.log('[Cron-Trigger] Received external trigger request. Spawning pipeline run...');
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD in IST
 
-    // Respond with a simple "okay" to the cron client immediately
+    if (lastRunDate === today) {
+      console.log(`[Cron-Trigger] Already ran today (${today}). Skipping duplicate trigger.`);
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('already-ran-today');
+      return;
+    }
+
+    lastRunDate = today;
+    console.log(`[Cron-Trigger] First trigger for ${today}. Spawning pipeline run...`);
+
+    // Respond immediately so the cron client doesn't timeout
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('okay');
 
@@ -47,7 +65,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Fallback for all other endpoints (including HTML requests)
+  // Fallback for all other endpoints
   res.writeHead(404, { 'Content-Type': 'text/plain' });
   res.end('Not Found');
 });
