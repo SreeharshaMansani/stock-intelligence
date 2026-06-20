@@ -2,7 +2,7 @@
 
 An enterprise-grade, lightweight Node.js implementation of the **Daily Stock Intelligence Report** pipeline and interactive **Control Center Dashboard**. 
 
-This system is optimized for a **100% free, card-free cloud deployment** using **Render**, **Google AI Studio (Gemini)**, **Resend**, and **GitHub Actions**. You will **not** need to enter any credit card or billing details.
+This system is optimized for a **100% free, card-free cloud deployment** using **Render**, **Google AI Studio (Gemini)**, **Resend**, and a **Cloudflare Worker** for scheduling. You will **not** need to enter any credit card or billing details.
 
 ---
 https://sreeharshamansani.github.io/stock-intelligence/
@@ -11,7 +11,7 @@ https://sreeharshamansani.github.io/stock-intelligence/
 
 ```mermaid
 graph TD
-    A[GitHub Actions <br> 7:00 AM IST Schedule] -- GET /api/cron-trigger --> B(Render Free Web Service)
+    A[Cloudflare Worker <br> 7:00, 7:10, 7:20 AM IST Mon-Fri] -- GET /api/cron-trigger --> B(Render Free Web Service)
     B -- Wakes Up Container --> C[dashboard-server.js]
     C -- Spawns Background Worker --> D[index.js --now]
     D -- Reads --> E[Google Sheets API]
@@ -22,8 +22,8 @@ graph TD
 
 1. **Host Dashboard on Render**: Link your GitHub repository to [Render](https://render.com). The interactive web dashboard and background scheduler run in a single web service.
 2. **Auto-Sleep Handling**: Render's free tier sleeps after 15 minutes of inactivity to save resources.
-3. **Daily Trigger**: A free GitHub Actions workflow pings `https://your-app.onrender.com/api/cron-trigger` at **7:00 AM IST** every weekday.
-4. **Instant Run**: This request wakes up your Render container, which instantly executes your entire stock analysis pipeline, compiles the report, and emails it to your inbox!
+3. **Daily Trigger**: A free Cloudflare Worker pings `https://your-app.onrender.com/api/cron-trigger` at **7:00, 7:10, and 7:20 AM IST** every weekday, retrying until the Render container wakes up.
+4. **Instant Run**: Once the container is awake, the pipeline fetches live prices and news, generates the AI report, and emails it to your inbox!
 
 ---
 
@@ -32,6 +32,7 @@ graph TD
 * **Flexible Gemini Engine (Dual-Mode):** 
   * *Google AI Studio (Recommended):* Authenticate using a free API key with a generous free tier (no credit card required).
   * *Vertex AI:* Fall back to Google Cloud service account authentication if billing is enabled.
+* **Cloudflare Worker Scheduler:** A zero-config, always-on Cloudflare Worker fires 3 staggered cron triggers (7:00, 7:10, 7:20 AM IST Mon–Fri) to reliably wake Render's free-tier container and trigger the pipeline — no GitHub Actions or paid cron services required.
 * **Direct News Context Feed:** The system fetches recent headlines and snippets directly and passes them to Gemini as baseline context, allowing the LLM to analyze the source material and reason on its own.
 * **Resend HTTP Mailer:** Bypasses SMTP port blocking on modern cloud hosts like Render by utilizing Resend's secure HTTPS API (port 443).
 * **Control Center UI:** Built-in web dashboard to review settings, trigger manual runs, inspect logs, and download past HTML and JSON reports.
@@ -146,19 +147,28 @@ Open [http://localhost:3000](http://localhost:3000) to access the Control Center
 
 ---
 
-## ⏰ Step 6: Configure the Daily Schedule on GitHub Actions
+## ⏰ Step 6: Deploy the Cloudflare Worker Scheduler
 
-Because Render Free Web Services sleep after 15 minutes of inactivity, we use a GitHub Actions workflow that executes every weekday morning to ping the wake-up endpoint, retry automatically while the container spins up, and trigger the pipeline.
+Because Render Free Web Services sleep after 15 minutes of inactivity, we use a Cloudflare Worker that fires 3 staggered cron triggers every weekday morning to reliably wake the container and run the pipeline.
 
-1. In your project repository, check that the workflow file exists at `.github/workflows/daily-run.yml`.
-2. Ensure you have replaced `https://stock-intelligence-yjsf.onrender.com/api/cron-trigger` in the workflow file with your own Render Web Service URL if it is different.
-3. Commit and push the file to your repository:
-   ```bash
-   git add .github/workflows/daily-run.yml
-   git commit -m "Configure production cloud-trigger schedule via GitHub Actions"
-   git push origin main
+1. Go to [Cloudflare](https://cloudflare.com) and sign up for a free account (no credit card required).
+2. In the Cloudflare dashboard, go to **Workers & Pages → Create → Create Worker**.
+3. Replace the default worker code with the contents of `cloudflare-worker/worker.js` from this project.
+4. Update the `RENDER_URL` constant at the top of `worker.js` to match **your** Render Web Service URL:
+   ```js
+   const RENDER_URL = 'https://YOUR-APP-NAME.onrender.com/api/cron-trigger';
    ```
-4. Go to your repository on GitHub, click the **Actions** tab, select **"Wake and Trigger Stock Intelligence"**, and click **"Run workflow"** to test it immediately. It will automatically run on a schedule every Monday–Friday at 7:00 AM IST.
+5. Click **Deploy**.
+6. Go to the worker's **Settings → Triggers → Cron Triggers** and add three schedules:
+   | Cron Expression | Time (IST) |
+   | :--- | :--- |
+   | `30 1 * * 1-5` | 7:00 AM IST Mon–Fri |
+   | `40 1 * * 1-5` | 7:10 AM IST Mon–Fri |
+   | `50 1 * * 1-5` | 7:20 AM IST Mon–Fri |
+7. Save triggers. The worker will now automatically wake your Render app and trigger the pipeline every weekday morning, retrying up to 3 times if the container is slow to start.
+
+> [!TIP]
+> You can test immediately by clicking **"Send test event"** on the worker's Triggers tab, or by visiting `https://YOUR-APP-NAME.onrender.com/api/cron-trigger` directly in your browser.
 
 ---
 
@@ -172,6 +182,9 @@ stock-intelligence/
 ├── .env                         # Local environment settings (ignored by Git)
 ├── .gitignore                   # Prevents sensitive files from being pushed to Git
 ├── package.json                 # Dependency map & startup scripts
+├── cloudflare-worker/
+│   └── worker.js                # Cloudflare Worker scheduler — fires 3 cron triggers at
+│                                #   7:00, 7:10, 7:20 AM IST (Mon–Fri) to wake Render
 ├── src/
 │   ├── db.js                    # SQLite database storage operations
 │   ├── sheets.js                # Google Sheets reader & CSV export fallback

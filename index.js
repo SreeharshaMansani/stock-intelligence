@@ -2,8 +2,11 @@
 /**
  * index.js — Daily Stock Intelligence Report
  *
- * Faithful port of the n8n flow "Daily Stock Intelligence Report v11".
- * Designed for Oracle Cloud Free Tier (ARM Ubuntu VM).
+ * Production architecture:
+ *   - Hosted on Render Free Web Service (dashboard-server.js)
+ *   - Daily trigger via Cloudflare Worker (cloudflare-worker/worker.js)
+ *     which fires at 7:00, 7:10, 7:20 AM IST (Mon–Fri) and retries
+ *     until the Render container wakes and accepts the cron-trigger request.
  *
  * Run once:   node index.js --now
  * Scheduled:  node index.js          (uses CRON_SCHEDULE from .env)
@@ -198,9 +201,9 @@ async function run() {
     });
     console.log(`  → ${_degraded ? 'DEGRADED mode' : 'Normal mode'}, prompt length: ${prompt.length} chars`);
 
-    // ── 8. Call Gemini ────────────────────────────────────────
-    currentPhase = 'Generating Gemini Report';
-    console.log('\n[Phase 7] Generating report with Gemini…');
+    // ── 8. Call LLM (Gemini / Vertex AI) ─────────────────────
+    currentPhase = 'Generating LLM Report';
+    console.log('\n[Phase 7] Generating report via LLM…');
     let reportText;
     try {
       reportText = await generateReport(prompt);
