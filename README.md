@@ -204,6 +204,6 @@ stock-intelligence/
 ## ⚠️ Free Cloud Persistence Warning
 On Render's Free Tier, the application container's filesystem is ephemeral. This means that whenever the app goes to sleep or gets redeployed, any new files created on disk (such as `data/stock_reports.db` or cached reports in `reports/`) are reset. 
 
-This **does not affect** your daily stock reports! Every morning, when `cron-job.org` pings your URL, the script will spin up, fetch fresh macro markets and Yahoo Finance prices, analyze the news, query Gemini, and email the beautiful daily report to your inbox successfully. 
+This **does not affect** your daily stock reports! Every morning, when the Cloudflare Worker pings your `/api/cron-trigger` URL, the script will spin up, fetch fresh macro markets and Yahoo Finance prices, analyze the news, query Gemini, and email the beautiful daily report to your inbox successfully. 
 
 *If you ever want to save your historical database runs permanently, you can create a completely free, card-free PostgreSQL database on [Supabase.com](https://supabase.com) and update your `src/db.js` file to connect to it instead of local SQLite!*

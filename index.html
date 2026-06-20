@@ -640,6 +640,7 @@
     <span class="badge badge-red">Yahoo Finance</span>
     <span class="badge badge-green">Google Sheets</span>
     <span class="badge badge-blue">Render · Free Tier</span>
+    <span class="badge badge-red">Cloudflare Workers</span>
   </div>
 
   <h1 class="hero-title">
@@ -778,14 +779,14 @@
 <section class="section reveal">
   <div class="section-label">Architecture</div>
   <h2 class="section-title">Zero-cost cloud setup</h2>
-  <p class="section-body">Four free services wire together to deliver your report every morning — no credit card needed for any of them.</p>
+  <p class="section-body">Five free services wire together to deliver your report every morning — no credit card needed for any of them.</p>
 
   <div class="arch-diagram">
     <div class="arch-grid">
       <div class="arch-node">
-        <span class="arch-node-icon">🤖</span>
-        <div class="arch-node-name">GitHub Actions</div>
-        <div class="arch-node-sub">7:00 AM IST<br>Mon – Fri Schedule</div>
+        <span class="arch-node-icon">⚡</span>
+        <div class="arch-node-name">Cloudflare Worker</div>
+        <div class="arch-node-sub">7:00, 7:10, 7:20 AM IST<br>Mon – Fri · 3 retries</div>
       </div>
       <div class="arch-arrow">
         <div class="arch-arrow-line"></div>
@@ -1011,9 +1012,9 @@
     </div>
     <div class="cloud-step">
       <div class="cloud-step-num">06</div>
-      <div class="cloud-step-name">Schedule with GitHub Actions</div>
-      <div class="cloud-step-desc">Create <code>.github/workflows/daily-run.yml</code> to run on a cron schedule, pinging your Render URL. Set to 7:00 AM IST, Mon–Fri.</div>
-      <a class="cloud-link" href="https://github.com" target="_blank">GitHub Actions →</a>
+      <div class="cloud-step-name">Schedule with Cloudflare Worker</div>
+      <div class="cloud-step-desc">Create a free Cloudflare Worker using <code>cloudflare-worker/worker.js</code>. Add 3 cron triggers (7:00, 7:10, 7:20 AM IST Mon–Fri) to reliably wake Render.</div>
+      <a class="cloud-link" href="https://dash.cloudflare.com" target="_blank">Cloudflare Dashboard →</a>
     </div>
   </div>
 
@@ -1037,6 +1038,8 @@
     <div class="indent"><span class="tree-file">package.json</span></div>
     <div class="indent"><span class="tree-file">.env</span> <span class="tree-dim">— Your secrets (git-ignored)</span></div>
     <div class="indent"><span class="tree-file">google-service-account.json</span> <span class="tree-dim">— Sheets key (git-ignored)</span></div>
+    <div class="indent"><span class="tree-dir">cloudflare-worker/</span></div>
+    <div class="indent2"><span class="tree-key">worker.js</span> <span class="tree-dim">— Cloudflare Worker scheduler (3 cron triggers, Mon–Fri)</span></div>
     <div class="indent"><span class="tree-dir">src/</span></div>
     <div class="indent2"><span class="tree-key">sheets.js</span>   <span class="tree-dim">— Reads Stocks + exposure tabs via Sheets API</span></div>
     <div class="indent2"><span class="tree-key">macro.js</span>    <span class="tree-dim">— Yahoo Finance macro data + Google News RSS</span></div>
