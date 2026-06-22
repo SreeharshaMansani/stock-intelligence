@@ -30,7 +30,7 @@ function buildGeminiPrompt({ rows, macroMarketsText, macroNewsText, exposureMap,
   const today = new Date().toISOString().split('T')[0];
 
   const sheetFailed = stocksConfig.length > 0 && stocksConfig[0]._system_status_sheet === 'failed';
-  const noStocks    = stocksConfig.length === 0 || stocksConfig[0].stock === 'NO_STOCKS';
+  const noStocks = stocksConfig.length === 0 || stocksConfig[0].stock === 'NO_STOCKS';
 
   if (sheetFailed || noStocks) {
     return {
@@ -83,7 +83,7 @@ ${macroNewsText}`,
   for (const [stock, rs] of Object.entries(byStock)) {
     rs.sort((a, b) => (b.run_date || '').localeCompare(a.run_date || ''));
     const latest = rs[0];
-    const older  = rs.slice(1);
+    const older = rs.slice(1);
     const config = stocksConfig.find(s => s.stock === stock) || {};
 
     const sentimentLabel = latest.avg_sentiment > 0.2 ? 'Positive' : latest.avg_sentiment < -0.2 ? 'Negative' : 'Neutral';
@@ -93,8 +93,8 @@ ${macroNewsText}`,
     const priceLine = (latest.price_status && latest.price_status === 'cached')
       ? `PRICE: ₹${latest.current_price} (cached from previous run; 1D ${sign1d}${latest.pct_change_1d}% | 5D ${sign5d}${latest.pct_change_5d}% | ${latest.distance_52w_high_pct}% from 52w high)`
       : (latest.price_status && latest.price_status !== 'ok')
-      ? 'PRICE: unavailable (fetch failed)'
-      : `PRICE: ₹${latest.current_price} (1D ${sign1d}${latest.pct_change_1d}% | 5D ${sign5d}${latest.pct_change_5d}% | ${latest.distance_52w_high_pct}% from 52w high)`;
+        ? 'PRICE: unavailable (fetch failed)'
+        : `PRICE: ₹${latest.current_price} (1D ${sign1d}${latest.pct_change_1d}% | 5D ${sign5d}${latest.pct_change_5d}% | ${latest.distance_52w_high_pct}% from 52w high)`;
 
     const myExposures = config.exposures || [];
     const exposureLines = [];
@@ -199,16 +199,16 @@ function generateLocalFallbackReport(prompt) {
   const stocksData = [];
   const stockRegex = /=== STOCK: ([\w.-]+) ===\r?\n([\s\S]*?)(?==== STOCK:|$)/g;
   let match;
-  
+
   while ((match = stockRegex.exec(prompt)) !== null) {
     const ticker = match[1];
     const blockText = match[2];
-    
+
     // Parse price
     const priceMatch = blockText.match(/PRICE: ₹([\d,.]+)\s*\(([^)]+)\)/) || blockText.match(/PRICE: ([^\r\n]+)/);
     const priceStr = priceMatch ? priceMatch[1] : '0';
     const priceDetail = priceMatch ? priceMatch[2] : '';
-    
+
     // Extract 1D% and 5D%
     let pct1d = '0.00%';
     let pct5d = '0.00%';
@@ -218,29 +218,29 @@ function generateLocalFallbackReport(prompt) {
       pct1d = match1d ? match1d[1] : '0.00%';
       pct5d = match5d ? match5d[1] : '0.00%';
     }
-    
+
     // Parse Top Headline
     const headlineMatch = blockText.match(/TOP HEADLINE: ([^\r\n]+)/);
     const headline = headlineMatch ? headlineMatch[1] : 'No major news';
-    
+
     // Parse Direct News Articles
     const summaryMatch = blockText.match(/DIRECT NEWS ARTICLES: ([\s\S]*?)(?=\r?\n[A-Z_]+:|\r?\n===|$)/);
     const summary = summaryMatch ? summaryMatch[1].trim() : 'No news articles available';
-    
+
     // Parse Sentiment
     const sentimentMatch = blockText.match(/DIRECT SENTIMENT: (\w+)\s*\(score ([\d.-]+)\)/);
     const sentimentLabel = sentimentMatch ? sentimentMatch[1] : 'Neutral';
     const sentimentScore = sentimentMatch ? parseFloat(sentimentMatch[2]) : 0;
-    
+
     // Parse sector summary
     const sectorMatch = blockText.match(/SECTOR: ([^\r\n]+)/);
     const sector = sectorMatch ? sectorMatch[1] : '';
-    
+
     // Determine action signal
     let action = 'WAIT';
     let read = '';
     const name = ticker.split('.')[0];
-    
+
     if (ticker.includes('RELIANCE')) {
       if (sentimentScore > 0.1) {
         action = 'BUY';
@@ -278,7 +278,7 @@ function generateLocalFallbackReport(prompt) {
         read = `${name} remains range-bound with balanced buy-sell flows. Keep positions intact.`;
       }
     }
-    
+
     stocksData.push({
       ticker,
       name,
@@ -322,7 +322,7 @@ function generateLocalFallbackReport(prompt) {
 
   // Build markdown
   let md = `## Market Pulse\n${marketPulse}\n\n## Stocks\n\n`;
-  
+
   for (const s of stocksData) {
     let catalyst = '';
     if (s.ticker.includes('RELIANCE')) {
@@ -336,7 +336,7 @@ function generateLocalFallbackReport(prompt) {
     }
     md += `**${s.ticker}** — ₹${s.priceStr} (${s.pct1d} / ${s.pct5d}) — **[${s.action}]**\n_${s.headline} — Google News_\n→ ${s.read}\n⚡ *Catalyst:* ${catalyst}\n\n`;
   }
-  
+
   md += `## Bullish\n${bullish.join('\n')}\n\n`;
   md += `## Bearish / Risks\n${bearish.join('\n')}\n\n`;
   md += `## Watchpoints — Next 7 Days\n${watchpoints.join('\n')}`;
@@ -383,7 +383,7 @@ async function generateReport(prompt) {
   // 1. If an API key is specified, default to Google AI Studio
   if (!isPlaceholder) {
     console.log('[Gemini] Using Google AI Studio Endpoint.');
-    const model  = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     try {
@@ -413,7 +413,7 @@ async function generateReport(prompt) {
   try {
     const token = await getAccessToken();
     const region = process.env.VERTEX_REGION || 'us-central1';
-    
+
     // Model mapping: Vertex AI prefers specific version identifiers
     let modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     if (modelName === 'gemini-2.5-flash') modelName = 'gemini-2.5-flash-001';
@@ -584,19 +584,36 @@ function renderHtml(reportText, reportDate) {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:100%;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
 
-        <!-- Header -->
-        <tr><td style="background:#0f172a;padding:20px 22px;">
-          <table width="100%"><tr>
-            <td>
-              <div style="font:700 11px/1 ${FONT};color:#f87171;letter-spacing:2px;">SYSTEM ALERT</div>
-              <div style="margin-top:8px;font:600 20px/1.2 ${FONT};color:#ffffff;letter-spacing:-.3px;">Stock Intelligence</div>
-            </td>
-            <td align="right" style="vertical-align:middle;white-space:nowrap;">
-              <span style="font:500 12px/1.4 ${FONT};color:#94a3b8;margin-right:16px;display:inline-block;vertical-align:middle;">${escapeHtml(reportDate)}</span>
-              <a href="https://groww.in/stocks/" target="_blank" onclick="window.open('https://groww.in/stocks/', '_blank'); return false;" class="groww-btn" style="display:inline-block;padding:8px 16px;border-radius:8px;background:#00e5a0;color:#0f172a;font:700 12px/1 ${FONT};letter-spacing:.5px;text-decoration:none;border:none;cursor:pointer;vertical-align:middle;">Groww App</a>
-            </td>
-          </tr></table>
-        </td></tr>
+        <!-- Redesigned Header Section -->
+        <tr>
+          <td style="background: linear-gradient(135deg, #2d0707 0%, #5a0f0f 100%); padding: 28px 24px; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td>
+                  <!-- Kicker Tag -->
+                  <div style="font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 11px; color: #f87171; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">
+                    System Alert
+                  </div>
+                  <!-- Main Title -->
+                  <h1 style="margin: 0; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 28px; line-height: 1.2; color: #ffffff;">
+                    Stock Intelligence
+                  </h1>
+                  <!-- Dynamic Date Placement -->
+                  <div style="margin-top: 8px; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 500; font-size: 13px; color: #94a3b8;">
+                    ${escapeHtml(reportDate)}
+                  </div>
+                </td>
+                
+                <!-- CTA Button Column -->
+                <td align="right" valign="middle" style="white-space: nowrap; width: 120px;">
+                  <a href="https://groww.in/stocks/" target="_blank" onclick="window.open('https://groww.in/stocks/', '_blank'); return false;" class="groww-btn" style="display: inline-block; padding: 10px 18px; background: #00e5a0; color: #07132d; text-decoration: none; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 12px; border-radius: 8px; letter-spacing: 0.3px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0, 229, 160, 0.2);">
+                    Open Groww
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
         <!-- Alert Content -->
         <tr><td style="padding:22px 22px 28px;">
@@ -759,19 +776,36 @@ function renderHtml(reportText, reportDate) {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:100%;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
 
-        <!-- Header -->
-        <tr><td style="background:#0f172a;padding:20px 22px;">
-          <table width="100%"><tr>
-            <td>
-              <div style="font:700 11px/1 ${FONT};color:#60a5fa;letter-spacing:2px;">DAILY · BRIEF</div>
-              <div style="margin-top:8px;font:600 20px/1.2 ${FONT};color:#ffffff;letter-spacing:-.3px;">Stock Intelligence</div>
-            </td>
-            <td align="right" style="vertical-align:middle;white-space:nowrap;">
-              <span style="font:500 12px/1.4 ${FONT};color:#94a3b8;margin-right:16px;display:inline-block;vertical-align:middle;">${escapeHtml(reportDate)}</span>
-              <a href="https://groww.in/stocks/" target="_blank" onclick="window.open('https://groww.in/stocks/', '_blank'); return false;" class="groww-btn" style="display:inline-block;padding:8px 16px;border-radius:8px;background:#00e5a0;color:#0f172a;font:700 12px/1 ${FONT};letter-spacing:.5px;text-decoration:none;border:none;cursor:pointer;vertical-align:middle;">Groww App</a>
-            </td>
-          </tr></table>
-        </td></tr>
+        <!-- Redesigned Header Section -->
+        <tr>
+          <td style="background: linear-gradient(135deg, #07132d 0%, #0f295a 100%); padding: 28px 24px; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td>
+                  <!-- Kicker Tag -->
+                  <div style="font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 11px; color: #38bdf8; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">
+                    Daily Brief
+                  </div>
+                  <!-- Main Title -->
+                  <h1 style="margin: 0; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 28px; line-height: 1.2; color: #ffffff;">
+                    Stock Intelligence
+                  </h1>
+                  <!-- Dynamic Date Placement -->
+                  <div style="margin-top: 8px; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 500; font-size: 13px; color: #94a3b8;">
+                    ${escapeHtml(reportDate)}
+                  </div>
+                </td>
+                
+                <!-- CTA Button Column -->
+                <td align="right" valign="middle" style="white-space: nowrap; width: 120px;">
+                  <a href="https://groww.in/stocks/" target="_blank" onclick="window.open('https://groww.in/stocks/', '_blank'); return false;" class="groww-btn" style="display: inline-block; padding: 10px 18px; background: #00e5a0; color: #07132d; text-decoration: none; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 12px; border-radius: 8px; letter-spacing: 0.3px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0, 229, 160, 0.2);">
+                    Open Groww
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
         <!-- Market Pulse -->
         <tr><td style="padding:22px 22px 6px;">
