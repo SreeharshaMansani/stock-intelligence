@@ -552,11 +552,37 @@ function renderHtml(reportText, reportDate) {
   // Fallback if no stocks were parsed (e.g. degraded run status report)
   if (parsed.stocks.length === 0) {
     return `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stock Intelligence - Alert</title></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stock Intelligence - Alert</title>
+<style>
+  .groww-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: #00e5a0;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 1;
+    font-family: ${FONT};
+    letter-spacing: .5px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,229,160,0.2);
+  }
+  .groww-btn:hover {
+    background: #00c489;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,229,160,0.4);
+  }
+</style>
+</head>
 <body style="margin:0;padding:0;background:#f1f3f6;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f3f6;padding:24px 12px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:100%;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
 
         <!-- Header -->
         <tr><td style="background:#0f172a;padding:20px 22px;">
@@ -565,7 +591,10 @@ function renderHtml(reportText, reportDate) {
               <div style="font:700 11px/1 ${FONT};color:#f87171;letter-spacing:2px;">SYSTEM ALERT</div>
               <div style="margin-top:8px;font:600 20px/1.2 ${FONT};color:#ffffff;letter-spacing:-.3px;">Stock Intelligence</div>
             </td>
-            <td align="right" style="font:500 12px/1.4 ${FONT};color:#94a3b8;">${escapeHtml(reportDate)}</td>
+            <td align="right" style="vertical-align:middle;white-space:nowrap;">
+              <span style="font:500 12px/1.4 ${FONT};color:#94a3b8;margin-right:16px;display:inline-block;vertical-align:middle;">${escapeHtml(reportDate)}</span>
+              <a href="https://groww.in/stocks/" target="_blank" onclick="window.open('https://groww.in/stocks/', '_blank'); return false;" class="groww-btn" style="display:inline-block;padding:8px 16px;border-radius:8px;background:#00e5a0;color:#0f172a;font:700 12px/1 ${FONT};letter-spacing:.5px;text-decoration:none;border:none;cursor:pointer;vertical-align:middle;">Groww App</a>
+            </td>
           </tr></table>
         </td></tr>
 
@@ -698,11 +727,37 @@ function renderHtml(reportText, reportDate) {
     .join("");
 
   return `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Daily Stock Brief</title></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Daily Stock Brief</title>
+<style>
+  .groww-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: #00e5a0;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 1;
+    font-family: ${FONT};
+    letter-spacing: .5px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,229,160,0.2);
+  }
+  .groww-btn:hover {
+    background: #00c489;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,229,160,0.4);
+  }
+</style>
+</head>
 <body style="margin:0;padding:0;background:#f1f3f6;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f3f6;padding:24px 12px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:100%;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);">
 
         <!-- Header -->
         <tr><td style="background:#0f172a;padding:20px 22px;">
@@ -711,7 +766,10 @@ function renderHtml(reportText, reportDate) {
               <div style="font:700 11px/1 ${FONT};color:#60a5fa;letter-spacing:2px;">DAILY · BRIEF</div>
               <div style="margin-top:8px;font:600 20px/1.2 ${FONT};color:#ffffff;letter-spacing:-.3px;">Stock Intelligence</div>
             </td>
-            <td align="right" style="font:500 12px/1.4 ${FONT};color:#94a3b8;">${escapeHtml(reportDate)}</td>
+            <td align="right" style="vertical-align:middle;white-space:nowrap;">
+              <span style="font:500 12px/1.4 ${FONT};color:#94a3b8;margin-right:16px;display:inline-block;vertical-align:middle;">${escapeHtml(reportDate)}</span>
+              <a href="https://groww.in/stocks/" target="_blank" onclick="window.open('https://groww.in/stocks/', '_blank'); return false;" class="groww-btn" style="display:inline-block;padding:8px 16px;border-radius:8px;background:#00e5a0;color:#0f172a;font:700 12px/1 ${FONT};letter-spacing:.5px;text-decoration:none;border:none;cursor:pointer;vertical-align:middle;">Groww App</a>
+            </td>
           </tr></table>
         </td></tr>
 
@@ -742,7 +800,7 @@ function renderHtml(reportText, reportDate) {
         </td></tr>
       </table>
 
-      <div style="max-width:560px;padding:14px 8px;font:400 11px/1.5 ${FONT};color:#94a3b8;text-align:center;">
+      <div style="max-width:100%;width:100%;padding:14px 8px;font:400 11px/1.5 ${FONT};color:#94a3b8;text-align:center;">
         You're receiving this because you're on the daily brief list.
       </div>
     </td></tr>
